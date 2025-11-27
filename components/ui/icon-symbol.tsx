@@ -14,10 +14,49 @@ type IconSymbolName = keyof typeof MAPPING;
  * - see SF Symbols in the [SF Symbols](https://developer.apple.com/sf-symbols/) app.
  */
 const MAPPING = {
+  // Navigation icons
   'house.fill': 'home',
   'paperplane.fill': 'send',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
+  'chevron.left': 'chevron-left',
+  'arrow.left': 'arrow-back',
+  
+  // Tab bar icons for ABAL
+  'creditcard.fill': 'credit-card',
+  'chart.bar.fill': 'bar-chart',
+  'person.fill': 'person',
+  'bubble.left.and.bubble.right.fill': 'forum',
+  
+  // Activity icons
+  'checkmark.circle.fill': 'check-circle',
+  'dumbbell.fill': 'fitness-center',
+  'figure.walk': 'directions-walk',
+  'heart.fill': 'favorite',
+  'flame.fill': 'local-fire-department',
+  'trophy.fill': 'emoji-events',
+  'star.fill': 'star',
+  'calendar': 'event',
+  
+  // UI icons
+  'bell.fill': 'notifications',
+  'bell': 'notifications-none',
+  'gearshape.fill': 'settings',
+  'arrow.right': 'arrow-forward',
+  'plus': 'add',
+  'xmark': 'close',
+  'doc.text.fill': 'description',
+  'lock.fill': 'lock',
+  'questionmark.circle.fill': 'help',
+  'rectangle.portrait.and.arrow.right': 'logout',
+  'pencil': 'edit',
+  'doc.on.clipboard': 'content-copy',
+  'checkmark': 'check',
+  'clock.fill': 'schedule',
+  'person.2.fill': 'people',
+  'photo.fill': 'photo',
+  'hand.thumbsup.fill': 'thumb-up',
+  'bubble.right.fill': 'chat-bubble',
 } as IconMapping;
 
 /**
@@ -39,3 +78,5 @@ export function IconSymbol({
 }) {
   return <MaterialIcons color={color} size={size} name={MAPPING[name]} style={style} />;
 }
+
+export type { IconSymbolName };
