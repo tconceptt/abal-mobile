@@ -1,5 +1,6 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Animated,
   Dimensions,
   FlatList,
@@ -13,10 +14,10 @@ import {
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol, IconSymbolName } from '@/components/ui/icon-symbol';
 import { AbalColors, BorderRadius, Shadows, Spacing } from '@/constants/theme';
+import { useHealthData } from '@/hooks/useHealthData';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - Spacing.md * 2;
-const CARD_MARGIN = Spacing.md;
 
 export interface ProgressMetricData {
   id: string;
@@ -30,9 +31,12 @@ export interface ProgressMetricData {
   color: string;
   chartData: number[];
   subtitle?: string;
+  isLoading?: boolean;
+  error?: string | null;
 }
 
-const progressMetrics: ProgressMetricData[] = [
+// Static metrics that don't come from health data
+const staticProgressMetrics: ProgressMetricData[] = [
   {
     id: 'weight',
     title: 'Weight',
@@ -45,32 +49,6 @@ const progressMetrics: ProgressMetricData[] = [
     color: '#6366F1',
     chartData: [75, 74.5, 74, 73.5, 73, 72.8, 72.5],
     subtitle: 'Last updated today',
-  },
-  {
-    id: 'steps',
-    title: 'Daily Steps',
-    value: 8432,
-    unit: 'steps',
-    target: 10000,
-    trend: 'up',
-    trendValue: '+12% this week',
-    icon: 'figure.walk',
-    color: '#10B981',
-    chartData: [6500, 7200, 8100, 7800, 9200, 8800, 8432],
-    subtitle: 'Goal: 10,000 steps',
-  },
-  {
-    id: 'calories',
-    title: 'Calories Burned',
-    value: 2150,
-    unit: 'kcal',
-    target: 2500,
-    trend: 'up',
-    trendValue: '+8% this week',
-    icon: 'flame.fill',
-    color: '#F59E0B',
-    chartData: [1800, 2100, 1950, 2300, 2200, 2400, 2150],
-    subtitle: 'Active burn today',
   },
   {
     id: 'water',
@@ -100,6 +78,30 @@ const progressMetrics: ProgressMetricData[] = [
   },
 ];
 
+// Helper to calculate trend from weekly data
+function calculateTrend(data: number[]): { trend: 'up' | 'down' | 'stable'; trendValue: string } {
+  if (data.length < 2) {
+    return { trend: 'stable', trendValue: 'No data' };
+  }
+
+  const lastWeekAvg = data.slice(0, 3).reduce((a, b) => a + b, 0) / 3;
+  const thisWeekAvg = data.slice(4).reduce((a, b) => a + b, 0) / 3;
+
+  if (lastWeekAvg === 0) {
+    return { trend: 'stable', trendValue: 'Getting started' };
+  }
+
+  const percentChange = ((thisWeekAvg - lastWeekAvg) / lastWeekAvg) * 100;
+
+  if (percentChange > 5) {
+    return { trend: 'up', trendValue: `+${Math.round(percentChange)}% this week` };
+  } else if (percentChange < -5) {
+    return { trend: 'down', trendValue: `${Math.round(percentChange)}% this week` };
+  } else {
+    return { trend: 'stable', trendValue: 'Consistent' };
+  }
+}
+
 function MiniChart({ data, color }: { data: number[]; color: string }) {
   const max = Math.max(...data);
   const min = Math.min(...data);
@@ -123,39 +125,6 @@ function MiniChart({ data, color }: { data: number[]; color: string }) {
           />
         );
       })}
-    </View>
-  );
-}
-
-function ProgressCircle({
-  value,
-  target,
-  color,
-}: {
-  value: number;
-  target: number;
-  color: string;
-}) {
-  const percentage = Math.min((value / target) * 100, 100);
-
-  return (
-    <View style={styles.progressCircleContainer}>
-      <View style={[styles.progressCircleTrack, { borderColor: `${color}20` }]}>
-        <View
-          style={[
-            styles.progressCircleFill,
-            {
-              borderColor: color,
-              borderRightColor: 'transparent',
-              borderBottomColor: percentage > 50 ? color : 'transparent',
-              transform: [{ rotate: `${(percentage / 100) * 360}deg` }],
-            },
-          ]}
-        />
-      </View>
-      <ThemedText style={styles.progressPercentage}>
-        {Math.round(percentage)}%
-      </ThemedText>
     </View>
   );
 }
@@ -184,6 +153,56 @@ function ProgressCard({ metric, onPress }: { metric: ProgressMetricData; onPress
         : AbalColors.textSecondary;
   };
 
+  // Show loading state for health data metrics
+  if (metric.isLoading) {
+    return (
+      <View style={[styles.card, styles.cardLoading]}>
+        <View style={styles.cardHeader}>
+          <View style={[styles.iconContainer, { backgroundColor: `${metric.color}15` }]}>
+            <IconSymbol name={metric.icon} size={24} color={metric.color} />
+          </View>
+          <View style={styles.titleContainer}>
+            <ThemedText style={styles.cardTitle}>{metric.title}</ThemedText>
+            <ThemedText style={styles.cardSubtitle}>Loading from Health...</ThemedText>
+          </View>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={metric.color} />
+          <ThemedText style={styles.loadingText}>Syncing health data</ThemedText>
+        </View>
+      </View>
+    );
+  }
+
+  // Show error state
+  if (metric.error) {
+    return (
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      >
+        <View style={styles.cardHeader}>
+          <View style={[styles.iconContainer, { backgroundColor: `${metric.color}15` }]}>
+            <IconSymbol name={metric.icon} size={24} color={metric.color} />
+          </View>
+          <View style={styles.titleContainer}>
+            <ThemedText style={styles.cardTitle}>{metric.title}</ThemedText>
+            <ThemedText style={[styles.cardSubtitle, { color: AbalColors.error }]}>
+              Tap to connect
+            </ThemedText>
+          </View>
+        </View>
+        <View style={styles.errorContainer}>
+          <IconSymbol name="exclamationmark.triangle.fill" size={32} color={AbalColors.warning} />
+          <ThemedText style={styles.errorText}>{metric.error}</ThemedText>
+          <View style={styles.connectButton}>
+            <ThemedText style={styles.connectButtonText}>Grant Permission</ThemedText>
+          </View>
+        </View>
+      </Pressable>
+    );
+  }
+
   return (
     <Pressable
       onPress={onPress}
@@ -200,6 +219,12 @@ function ProgressCard({ metric, onPress }: { metric: ProgressMetricData; onPress
             <ThemedText style={styles.cardSubtitle}>{metric.subtitle}</ThemedText>
           )}
         </View>
+        {/* Health badge for synced data */}
+        {(metric.id === 'steps' || metric.id === 'calories') && !metric.error && (
+          <View style={styles.healthBadge}>
+            <IconSymbol name="heart.fill" size={12} color="#FF2D55" />
+          </View>
+        )}
       </View>
 
       {/* Value Section */}
@@ -226,7 +251,7 @@ function ProgressCard({ metric, onPress }: { metric: ProgressMetricData; onPress
               />
             </View>
             <ThemedText style={styles.targetText}>
-              {Math.round((metric.value / metric.target) * 100)}% of {metric.target}{' '}
+              {Math.round((metric.value / metric.target) * 100)}% of {metric.target.toLocaleString()}{' '}
               {metric.unit}
             </ThemedText>
           </View>
@@ -256,6 +281,54 @@ interface SwipableProgressCardsProps {
 export function SwipableProgressCards({ onViewAll }: SwipableProgressCardsProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
+  
+  // Get health data from the hook
+  const { data: healthData, isLoading, error, isAuthorized, requestPermission } = useHealthData();
+
+  // Build the progress metrics array with real health data
+  const progressMetrics = useMemo((): ProgressMetricData[] => {
+    const stepsTrend = calculateTrend(healthData.steps.weeklyData);
+    const caloriesTrend = calculateTrend(healthData.calories.weeklyData);
+
+    const stepsMetric: ProgressMetricData = {
+      id: 'steps',
+      title: 'Daily Steps',
+      value: healthData.steps.today,
+      unit: 'steps',
+      target: 10000,
+      trend: stepsTrend.trend,
+      trendValue: stepsTrend.trendValue,
+      icon: 'figure.walk',
+      color: '#10B981',
+      chartData: healthData.steps.weeklyData,
+      subtitle: healthData.steps.lastUpdated 
+        ? `Updated ${formatTimeAgo(healthData.steps.lastUpdated)}`
+        : 'Synced from Health',
+      isLoading: isLoading,
+      error: !isAuthorized && !isLoading ? error : null,
+    };
+
+    const caloriesMetric: ProgressMetricData = {
+      id: 'calories',
+      title: 'Calories Burned',
+      value: healthData.calories.today,
+      unit: 'kcal',
+      target: 2500,
+      trend: caloriesTrend.trend,
+      trendValue: caloriesTrend.trendValue,
+      icon: 'flame.fill',
+      color: '#F59E0B',
+      chartData: healthData.calories.weeklyData,
+      subtitle: healthData.calories.lastUpdated 
+        ? `Updated ${formatTimeAgo(healthData.calories.lastUpdated)}`
+        : 'Active burn today',
+      isLoading: isLoading,
+      error: !isAuthorized && !isLoading ? error : null,
+    };
+
+    // Order: Steps, Calories, Weight, Water, Sleep
+    return [stepsMetric, caloriesMetric, ...staticProgressMetrics];
+  }, [healthData, isLoading, error, isAuthorized]);
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const scrollPosition = event.nativeEvent.contentOffset.x;
@@ -266,6 +339,13 @@ export function SwipableProgressCards({ onViewAll }: SwipableProgressCardsProps)
   const scrollToIndex = (index: number) => {
     flatListRef.current?.scrollToIndex({ index, animated: true });
     setActiveIndex(index);
+  };
+
+  const handleCardPress = (metric: ProgressMetricData) => {
+    // If the card has an error (permission issue), request permission
+    if (metric.error && (metric.id === 'steps' || metric.id === 'calories')) {
+      requestPermission();
+    }
   };
 
   return (
@@ -290,7 +370,12 @@ export function SwipableProgressCards({ onViewAll }: SwipableProgressCardsProps)
         onScroll={handleScroll}
         scrollEventThrottle={16}
         contentContainerStyle={styles.cardsContainer}
-        renderItem={({ item }) => <ProgressCard metric={item} />}
+        renderItem={({ item }) => (
+          <ProgressCard 
+            metric={item} 
+            onPress={() => handleCardPress(item)}
+          />
+        )}
         keyExtractor={(item) => item.id}
         getItemLayout={(_, index) => ({
           length: CARD_WIDTH,
@@ -314,6 +399,24 @@ export function SwipableProgressCards({ onViewAll }: SwipableProgressCardsProps)
       </View>
     </View>
   );
+}
+
+// Helper function to format time ago
+function formatTimeAgo(date: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+
+  if (diffMins < 1) {
+    return 'just now';
+  } else if (diffMins < 60) {
+    return `${diffMins}m ago`;
+  } else if (diffHours < 24) {
+    return `${diffHours}h ago`;
+  } else {
+    return date.toLocaleDateString();
+  }
 }
 
 const styles = StyleSheet.create({
@@ -350,6 +453,9 @@ const styles = StyleSheet.create({
     marginRight: Spacing.md,
     ...Shadows.card,
   },
+  cardLoading: {
+    minHeight: 280,
+  },
   cardPressed: {
     opacity: 0.95,
     transform: [{ scale: 0.99 }],
@@ -381,6 +487,11 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: AbalColors.textSecondary,
     marginTop: 2,
+  },
+  healthBadge: {
+    backgroundColor: '#FF2D5510',
+    borderRadius: BorderRadius.full,
+    padding: 6,
   },
   valueSection: {
     marginBottom: Spacing.md,
@@ -464,30 +575,40 @@ const styles = StyleSheet.create({
     width: 24,
     backgroundColor: AbalColors.primary,
   },
-  progressCircleContainer: {
-    position: 'relative',
+  loadingContainer: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: Spacing.xl,
+    gap: Spacing.md,
   },
-  progressCircleTrack: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    borderWidth: 4,
-  },
-  progressCircleFill: {
-    position: 'absolute',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    borderWidth: 4,
-  },
-  progressPercentage: {
-    position: 'absolute',
+  loadingText: {
     fontSize: 14,
-    lineHeight: 18,
+    color: AbalColors.textSecondary,
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  errorText: {
+    fontSize: 13,
+    color: AbalColors.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: Spacing.md,
+  },
+  connectButton: {
+    backgroundColor: AbalColors.primary,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    marginTop: Spacing.sm,
+  },
+  connectButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
     fontWeight: '600',
-    color: AbalColors.textPrimary,
   },
 });
-

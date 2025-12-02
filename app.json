@@ -9,7 +9,16 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.abal.app",
+      "infoPlist": {
+        "NSHealthShareUsageDescription": "ABAL needs access to your health data to track your fitness progress, including steps, calories burned, and other metrics.",
+        "NSHealthUpdateUsageDescription": "ABAL needs permission to save your workout data to the Health app."
+      },
+      "entitlements": {
+        "com.apple.developer.healthkit": true,
+        "com.apple.developer.healthkit.access": []
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -19,7 +28,15 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.abal.app",
+      "permissions": [
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_TOTAL_CALORIES_BURNED",
+        "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
+        "android.permission.health.READ_DISTANCE",
+        "android.permission.health.READ_HEART_RATE"
+      ]
     },
     "web": {
       "output": "static",
@@ -38,7 +55,9 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "./plugins/withHealthKit.js",
+      "./plugins/withHealthConnect.js"
     ],
     "experiments": {
       "typedRoutes": true,
