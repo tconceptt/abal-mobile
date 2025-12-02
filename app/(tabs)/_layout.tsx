@@ -5,17 +5,13 @@ import { StyleSheet } from 'react-native';
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { AbalColors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: isDark ? '#fff' : AbalColors.tabIconSelected,
-        tabBarInactiveTintColor: isDark ? '#9BA1A6' : AbalColors.tabIconDefault,
+        tabBarActiveTintColor: AbalColors.tabIconSelected,
+        tabBarInactiveTintColor: AbalColors.tabIconDefault,
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarStyle: styles.tabBar,

@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import React from 'react';
+import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -9,9 +9,13 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { AbalColors, BorderRadius, Spacing } from '@/constants/theme';
 import { mockMembership, mockUser } from '@/constants/mock-data';
+import { useUser } from '@/context/UserContext';
+import { GoalSettingModal } from '@/components/GoalSettingModal';
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
+  const { goalWeight, setGoalWeight } = useUser();
+  const [goalModalVisible, setGoalModalVisible] = useState(false);
 
   const handleEditProfile = () => {
     console.log('Edit profile pressed');
@@ -112,6 +116,14 @@ export default function ProfileScreen() {
           />
           <View style={styles.divider} />
           <ProfileMenuItem
+            icon="target"
+            label="Goal Weight"
+            subtitle={goalWeight ? `${goalWeight} lbs` : "Set your target"}
+            onPress={() => setGoalModalVisible(true)}
+            iconColor="#EF4444"
+          />
+          <View style={styles.divider} />
+          <ProfileMenuItem
             icon="doc.text.fill"
             label="Payment History"
             subtitle="View past transactions"
@@ -163,6 +175,13 @@ export default function ProfileScreen() {
         {/* Bottom spacing */}
         <View style={styles.bottomSpacer} />
       </ScrollView>
+
+      <GoalSettingModal 
+        visible={goalModalVisible}
+        onClose={() => setGoalModalVisible(false)}
+        currentGoal={goalWeight}
+        onSave={setGoalWeight}
+      />
     </View>
   );
 }
