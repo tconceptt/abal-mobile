@@ -9,27 +9,29 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol, IconSymbolName } from '@/components/ui/icon-symbol';
 import { AbalColors, BorderRadius, Shadows, Spacing } from '@/constants/theme';
 
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
 interface ClassInfo {
   id: string;
   name: string;
-  time: string;
-  duration: string;
+  startTime: string;
+  endTime: string;
   instructor: string;
+  location: string;
   icon: IconSymbolName;
   color: string;
-  spotsLeft?: number;
+  spotsLeft: number;
 }
 
 interface DaySchedule {
   day: string;
   shortDay: string;
-  date: string;
+  date: number;
+  month: string;
   classes: ClassInfo[];
 }
 
@@ -38,120 +40,125 @@ const weeklySchedule: DaySchedule[] = [
   {
     day: 'Monday',
     shortDay: 'Mon',
-    date: 'Dec 2',
+    date: 2,
+    month: 'Dec',
     classes: [
-      { id: 'mon-1', name: 'Aerobics', time: '7:00 AM', duration: '45 min', instructor: 'Maria K.', icon: 'figure.run', color: '#F59E0B', spotsLeft: 8 },
-      { id: 'mon-2', name: 'Dance Fitness', time: '9:00 AM', duration: '50 min', instructor: 'Jasmine T.', icon: 'music.note', color: '#EC4899', spotsLeft: 5 },
-      { id: 'mon-3', name: 'Group Strength', time: '11:00 AM', duration: '55 min', instructor: 'Marcus J.', icon: 'dumbbell.fill', color: '#6366F1', spotsLeft: 12 },
-      { id: 'mon-4', name: 'Spin Class', time: '2:00 PM', duration: '45 min', instructor: 'Alex R.', icon: 'figure.indoor.cycle', color: '#10B981', spotsLeft: 3 },
-      { id: 'mon-5', name: 'Yoga Flow', time: '4:30 PM', duration: '60 min', instructor: 'Sarah L.', icon: 'figure.walk', color: '#8B5CF6', spotsLeft: 15 },
-      { id: 'mon-6', name: 'HIIT Training', time: '6:00 PM', duration: '40 min', instructor: 'Chris P.', icon: 'bolt.fill', color: '#EF4444', spotsLeft: 2 },
+      { id: 'mon-1', name: 'Yoga Flow', startTime: '07:00 AM', endTime: '07:45 AM', instructor: 'Sarah Johnson', location: 'Studio A', icon: 'figure.walk', color: '#8B5CF6', spotsLeft: 8 },
+      { id: 'mon-2', name: 'HIIT', startTime: '09:30 AM', endTime: '10:30 AM', instructor: 'Mike Brown', location: 'Main Gym', icon: 'bolt.fill', color: '#EF4444', spotsLeft: 5 },
+      { id: 'mon-3', name: 'Spin Class', startTime: '12:00 PM', endTime: '01:00 PM', instructor: 'Emily Davis', location: 'Studio B', icon: 'figure.indoor.cycle', color: '#10B981', spotsLeft: 3 },
+      { id: 'mon-4', name: 'Zumba', startTime: '06:30 PM', endTime: '07:30 PM', instructor: 'Chris Green', location: 'Studio A', icon: 'music.note', color: '#F472B6', spotsLeft: 0 },
     ],
   },
   {
     day: 'Tuesday',
     shortDay: 'Tue',
-    date: 'Dec 3',
+    date: 3,
+    month: 'Dec',
     classes: [
-      { id: 'tue-1', name: 'Morning Yoga', time: '6:30 AM', duration: '60 min', instructor: 'Sarah L.', icon: 'figure.walk', color: '#8B5CF6', spotsLeft: 10 },
-      { id: 'tue-2', name: 'Zumba', time: '9:00 AM', duration: '50 min', instructor: 'Diana M.', icon: 'music.note', color: '#F472B6', spotsLeft: 8 },
-      { id: 'tue-3', name: 'Core Blast', time: '12:00 PM', duration: '30 min', instructor: 'Marcus J.', icon: 'dumbbell.fill', color: '#6366F1', spotsLeft: 15 },
-      { id: 'tue-4', name: 'Dance Fitness', time: '5:00 PM', duration: '50 min', instructor: 'Jasmine T.', icon: 'music.note', color: '#EC4899', spotsLeft: 6 },
-      { id: 'tue-5', name: 'Group Strength', time: '7:00 PM', duration: '55 min', instructor: 'Chris P.', icon: 'dumbbell.fill', color: '#6366F1', spotsLeft: 4 },
+      { id: 'tue-1', name: 'Morning Yoga', startTime: '06:30 AM', endTime: '07:30 AM', instructor: 'Sarah Johnson', location: 'Studio A', icon: 'figure.walk', color: '#8B5CF6', spotsLeft: 10 },
+      { id: 'tue-2', name: 'Dance Fitness', startTime: '09:00 AM', endTime: '10:00 AM', instructor: 'Jasmine Taylor', location: 'Studio B', icon: 'music.note', color: '#EC4899', spotsLeft: 8 },
+      { id: 'tue-3', name: 'Group Strength', startTime: '12:00 PM', endTime: '01:00 PM', instructor: 'Marcus Jones', location: 'Main Gym', icon: 'dumbbell.fill', color: '#6366F1', spotsLeft: 15 },
+      { id: 'tue-4', name: 'Aerobics', startTime: '05:00 PM', endTime: '06:00 PM', instructor: 'Maria Kim', location: 'Studio A', icon: 'figure.run', color: '#F59E0B', spotsLeft: 6 },
+      { id: 'tue-5', name: 'HIIT', startTime: '07:00 PM', endTime: '08:00 PM', instructor: 'Chris Green', location: 'Main Gym', icon: 'bolt.fill', color: '#EF4444', spotsLeft: 4 },
     ],
   },
   {
     day: 'Wednesday',
     shortDay: 'Wed',
-    date: 'Dec 4',
+    date: 4,
+    month: 'Dec',
     classes: [
-      { id: 'wed-1', name: 'Aerobics', time: '7:00 AM', duration: '45 min', instructor: 'Maria K.', icon: 'figure.run', color: '#F59E0B', spotsLeft: 12 },
-      { id: 'wed-2', name: 'Pilates', time: '10:00 AM', duration: '50 min', instructor: 'Sarah L.', icon: 'figure.walk', color: '#8B5CF6', spotsLeft: 8 },
-      { id: 'wed-3', name: 'Spin Class', time: '12:30 PM', duration: '45 min', instructor: 'Alex R.', icon: 'figure.indoor.cycle', color: '#10B981', spotsLeft: 5 },
-      { id: 'wed-4', name: 'HIIT Training', time: '5:30 PM', duration: '40 min', instructor: 'Chris P.', icon: 'bolt.fill', color: '#EF4444', spotsLeft: 3 },
-      { id: 'wed-5', name: 'Zumba', time: '7:30 PM', duration: '50 min', instructor: 'Diana M.', icon: 'music.note', color: '#F472B6', spotsLeft: 10 },
+      { id: 'wed-1', name: 'Pilates', startTime: '07:00 AM', endTime: '08:00 AM', instructor: 'Sarah Johnson', location: 'Studio A', icon: 'figure.walk', color: '#8B5CF6', spotsLeft: 12 },
+      { id: 'wed-2', name: 'Spin Class', startTime: '10:00 AM', endTime: '11:00 AM', instructor: 'Alex Rivera', location: 'Studio B', icon: 'figure.indoor.cycle', color: '#10B981', spotsLeft: 5 },
+      { id: 'wed-3', name: 'Zumba', startTime: '12:30 PM', endTime: '01:30 PM', instructor: 'Diana Martinez', location: 'Studio A', icon: 'music.note', color: '#F472B6', spotsLeft: 10 },
+      { id: 'wed-4', name: 'Group Strength', startTime: '05:30 PM', endTime: '06:30 PM', instructor: 'Marcus Jones', location: 'Main Gym', icon: 'dumbbell.fill', color: '#6366F1', spotsLeft: 0 },
     ],
   },
   {
     day: 'Thursday',
     shortDay: 'Thu',
-    date: 'Dec 5',
+    date: 5,
+    month: 'Dec',
     classes: [
-      { id: 'thu-1', name: 'Morning Yoga', time: '6:30 AM', duration: '60 min', instructor: 'Sarah L.', icon: 'figure.walk', color: '#8B5CF6', spotsLeft: 14 },
-      { id: 'thu-2', name: 'Dance Fitness', time: '9:00 AM', duration: '50 min', instructor: 'Jasmine T.', icon: 'music.note', color: '#EC4899', spotsLeft: 7 },
-      { id: 'thu-3', name: 'Group Strength', time: '11:00 AM', duration: '55 min', instructor: 'Marcus J.', icon: 'dumbbell.fill', color: '#6366F1', spotsLeft: 9 },
-      { id: 'thu-4', name: 'Aerobics', time: '4:00 PM', duration: '45 min', instructor: 'Maria K.', icon: 'figure.run', color: '#F59E0B', spotsLeft: 11 },
-      { id: 'thu-5', name: 'Spin Class', time: '6:30 PM', duration: '45 min', instructor: 'Alex R.', icon: 'figure.indoor.cycle', color: '#10B981', spotsLeft: 2 },
+      { id: 'thu-1', name: 'Yoga Flow', startTime: '06:30 AM', endTime: '07:30 AM', instructor: 'Sarah Johnson', location: 'Studio A', icon: 'figure.walk', color: '#8B5CF6', spotsLeft: 14 },
+      { id: 'thu-2', name: 'HIIT', startTime: '09:00 AM', endTime: '10:00 AM', instructor: 'Mike Brown', location: 'Main Gym', icon: 'bolt.fill', color: '#EF4444', spotsLeft: 7 },
+      { id: 'thu-3', name: 'Dance Fitness', startTime: '11:00 AM', endTime: '12:00 PM', instructor: 'Jasmine Taylor', location: 'Studio B', icon: 'music.note', color: '#EC4899', spotsLeft: 9 },
+      { id: 'thu-4', name: 'Spin Class', startTime: '06:30 PM', endTime: '07:30 PM', instructor: 'Alex Rivera', location: 'Studio B', icon: 'figure.indoor.cycle', color: '#10B981', spotsLeft: 2 },
     ],
   },
   {
     day: 'Friday',
     shortDay: 'Fri',
-    date: 'Dec 6',
+    date: 6,
+    month: 'Dec',
     classes: [
-      { id: 'fri-1', name: 'Aerobics', time: '7:00 AM', duration: '45 min', instructor: 'Maria K.', icon: 'figure.run', color: '#F59E0B', spotsLeft: 10 },
-      { id: 'fri-2', name: 'Core Blast', time: '10:00 AM', duration: '30 min', instructor: 'Marcus J.', icon: 'dumbbell.fill', color: '#6366F1', spotsLeft: 12 },
-      { id: 'fri-3', name: 'Zumba', time: '12:00 PM', duration: '50 min', instructor: 'Diana M.', icon: 'music.note', color: '#F472B6', spotsLeft: 8 },
-      { id: 'fri-4', name: 'Dance Fitness', time: '5:00 PM', duration: '50 min', instructor: 'Jasmine T.', icon: 'music.note', color: '#EC4899', spotsLeft: 4 },
-      { id: 'fri-5', name: 'HIIT Training', time: '7:00 PM', duration: '40 min', instructor: 'Chris P.', icon: 'bolt.fill', color: '#EF4444', spotsLeft: 6 },
+      { id: 'fri-1', name: 'Aerobics', startTime: '07:00 AM', endTime: '08:00 AM', instructor: 'Maria Kim', location: 'Studio A', icon: 'figure.run', color: '#F59E0B', spotsLeft: 10 },
+      { id: 'fri-2', name: 'Pilates', startTime: '10:00 AM', endTime: '11:00 AM', instructor: 'Sarah Johnson', location: 'Studio A', icon: 'figure.walk', color: '#8B5CF6', spotsLeft: 12 },
+      { id: 'fri-3', name: 'Zumba', startTime: '12:00 PM', endTime: '01:00 PM', instructor: 'Diana Martinez', location: 'Studio B', icon: 'music.note', color: '#F472B6', spotsLeft: 8 },
+      { id: 'fri-4', name: 'HIIT', startTime: '05:00 PM', endTime: '06:00 PM', instructor: 'Chris Green', location: 'Main Gym', icon: 'bolt.fill', color: '#EF4444', spotsLeft: 6 },
+      { id: 'fri-5', name: 'Group Strength', startTime: '07:00 PM', endTime: '08:00 PM', instructor: 'Marcus Jones', location: 'Main Gym', icon: 'dumbbell.fill', color: '#6366F1', spotsLeft: 0 },
     ],
   },
   {
     day: 'Saturday',
     shortDay: 'Sat',
-    date: 'Dec 7',
+    date: 7,
+    month: 'Dec',
     classes: [
-      { id: 'sat-1', name: 'Morning Yoga', time: '8:00 AM', duration: '75 min', instructor: 'Sarah L.', icon: 'figure.walk', color: '#8B5CF6', spotsLeft: 15 },
-      { id: 'sat-2', name: 'Spin Class', time: '10:00 AM', duration: '60 min', instructor: 'Alex R.', icon: 'figure.indoor.cycle', color: '#10B981', spotsLeft: 5 },
-      { id: 'sat-3', name: 'Group Strength', time: '12:00 PM', duration: '55 min', instructor: 'Marcus J.', icon: 'dumbbell.fill', color: '#6366F1', spotsLeft: 10 },
-      { id: 'sat-4', name: 'Zumba Party', time: '3:00 PM', duration: '90 min', instructor: 'Diana M.', icon: 'music.note', color: '#F472B6', spotsLeft: 20 },
+      { id: 'sat-1', name: 'Sunrise Yoga', startTime: '08:00 AM', endTime: '09:15 AM', instructor: 'Sarah Johnson', location: 'Studio A', icon: 'figure.walk', color: '#8B5CF6', spotsLeft: 15 },
+      { id: 'sat-2', name: 'Spin Class', startTime: '10:00 AM', endTime: '11:00 AM', instructor: 'Alex Rivera', location: 'Studio B', icon: 'figure.indoor.cycle', color: '#10B981', spotsLeft: 5 },
+      { id: 'sat-3', name: 'Dance Fitness', startTime: '12:00 PM', endTime: '01:00 PM', instructor: 'Jasmine Taylor', location: 'Studio B', icon: 'music.note', color: '#EC4899', spotsLeft: 10 },
+      { id: 'sat-4', name: 'Zumba Party', startTime: '03:00 PM', endTime: '04:30 PM', instructor: 'Diana Martinez', location: 'Studio A', icon: 'music.note', color: '#F472B6', spotsLeft: 20 },
     ],
   },
   {
     day: 'Sunday',
     shortDay: 'Sun',
-    date: 'Dec 8',
+    date: 8,
+    month: 'Dec',
     classes: [
-      { id: 'sun-1', name: 'Sunrise Yoga', time: '7:00 AM', duration: '60 min', instructor: 'Sarah L.', icon: 'figure.walk', color: '#8B5CF6', spotsLeft: 12 },
-      { id: 'sun-2', name: 'Pilates', time: '9:30 AM', duration: '50 min', instructor: 'Maria K.', icon: 'figure.walk', color: '#8B5CF6', spotsLeft: 8 },
-      { id: 'sun-3', name: 'Dance Fitness', time: '11:00 AM', duration: '50 min', instructor: 'Jasmine T.', icon: 'music.note', color: '#EC4899', spotsLeft: 10 },
+      { id: 'sun-1', name: 'Gentle Yoga', startTime: '09:00 AM', endTime: '10:00 AM', instructor: 'Sarah Johnson', location: 'Studio A', icon: 'figure.walk', color: '#8B5CF6', spotsLeft: 12 },
+      { id: 'sun-2', name: 'Pilates', startTime: '11:00 AM', endTime: '12:00 PM', instructor: 'Maria Kim', location: 'Studio A', icon: 'figure.walk', color: '#8B5CF6', spotsLeft: 8 },
+      { id: 'sun-3', name: 'Aerobics', startTime: '02:00 PM', endTime: '03:00 PM', instructor: 'Emily Davis', location: 'Main Gym', icon: 'figure.run', color: '#F59E0B', spotsLeft: 10 },
     ],
   },
 ];
 
-function ClassTimeSlot({ classInfo }: { classInfo: ClassInfo }) {
+function ClassCard({ classInfo }: { classInfo: ClassInfo }) {
+  const isFull = classInfo.spotsLeft === 0;
+
   return (
-    <View style={styles.timeSlot}>
-      {/* Time column */}
-      <View style={styles.timeColumn}>
-        <ThemedText style={styles.timeText}>{classInfo.time}</ThemedText>
-        <ThemedText style={styles.durationText}>{classInfo.duration}</ThemedText>
+    <View style={styles.classCard}>
+      {/* Left icon */}
+      <View style={[styles.classIconContainer, { backgroundColor: `${classInfo.color}12` }]}>
+        <IconSymbol name={classInfo.icon} size={24} color={classInfo.color} />
       </View>
 
       {/* Class details */}
-      <View style={[styles.classCard, { borderLeftColor: classInfo.color }]}>
-        <View style={styles.classCardHeader}>
-          <View style={[styles.classIconSmall, { backgroundColor: `${classInfo.color}15` }]}>
-            <IconSymbol name={classInfo.icon} size={16} color={classInfo.color} />
-          </View>
-          <View style={styles.classCardTitleContainer}>
-            <ThemedText style={styles.classCardTitle}>{classInfo.name}</ThemedText>
-            <ThemedText style={styles.instructorText}>with {classInfo.instructor}</ThemedText>
-          </View>
-          {classInfo.spotsLeft !== undefined && (
-            <View style={styles.spotsTag}>
-              <ThemedText
-                style={[
-                  styles.spotsTagText,
-                  classInfo.spotsLeft <= 3 && styles.spotsTagLow,
-                ]}
-              >
-                {classInfo.spotsLeft} left
-              </ThemedText>
-            </View>
-          )}
-        </View>
+      <View style={styles.classDetails}>
+        <ThemedText style={styles.className}>{classInfo.name}</ThemedText>
+        <ThemedText style={styles.classLocation}>{classInfo.location}</ThemedText>
+        <ThemedText style={styles.classInstructor}>{classInfo.instructor}</ThemedText>
+        <ThemedText style={styles.classTime}>
+          {classInfo.startTime} - {classInfo.endTime}
+        </ThemedText>
       </View>
+
+      {/* Book button or Full indicator */}
+      {isFull ? (
+        <View style={styles.fullBadge}>
+          <ThemedText style={styles.fullBadgeText}>Full</ThemedText>
+        </View>
+      ) : (
+        <Pressable
+          style={({ pressed }) => [
+            styles.bookButton,
+            pressed && styles.bookButtonPressed,
+          ]}
+        >
+          <ThemedText style={styles.bookButtonText}>Book</ThemedText>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -174,7 +181,7 @@ function DayTab({
         {schedule.shortDay}
       </ThemedText>
       <ThemedText style={[styles.dayTabDate, isActive && styles.dayTabDateActive]}>
-        {schedule.date.split(' ')[1]}
+        {schedule.month} {schedule.date}
       </ThemedText>
     </Pressable>
   );
@@ -185,7 +192,7 @@ export function ClassScheduleCard() {
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const insets = useSafeAreaInsets();
 
-  const todaySchedule = weeklySchedule[0]; // Monday as today for demo
+  const todaySchedule = weeklySchedule[0];
   const nextClass = todaySchedule.classes[0];
   const selectedDay = weeklySchedule[selectedDayIndex];
 
@@ -214,7 +221,7 @@ export function ClassScheduleCard() {
             <ThemedText style={styles.upNextLabel}>UP NEXT</ThemedText>
             <ThemedText style={styles.previewClassName}>{nextClass.name}</ThemedText>
             <ThemedText style={styles.previewTime}>
-              {nextClass.time} · {nextClass.duration}
+              {nextClass.startTime} · {nextClass.location}
             </ThemedText>
           </View>
           <View style={styles.classCountBadge}>
@@ -224,7 +231,7 @@ export function ClassScheduleCard() {
         </View>
       </Pressable>
 
-      {/* Full Schedule Modal - Timetable View */}
+      {/* Full Schedule Modal */}
       <Modal
         animationType="slide"
         transparent
@@ -232,61 +239,64 @@ export function ClassScheduleCard() {
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <Pressable 
+            style={styles.modalBackdrop} 
+            onPress={() => setModalVisible(false)}
+          />
+          <View style={[styles.modalContent, { paddingTop: insets.top }]}>
             {/* Modal Header */}
             <View style={styles.modalHeader}>
-              <View style={styles.modalHandle} />
               <View style={styles.modalTitleRow}>
-                <ThemedText style={styles.modalTitle}>Class Timetable</ThemedText>
+                <ThemedText style={styles.modalTitle}>Class Schedule</ThemedText>
                 <Pressable
                   onPress={() => setModalVisible(false)}
                   style={styles.closeButton}
                   hitSlop={12}
                 >
-                  <IconSymbol name="xmark" size={22} color={AbalColors.textSecondary} />
+                  <IconSymbol name="xmark" size={24} color={AbalColors.textSecondary} />
                 </Pressable>
               </View>
-              <ThemedText style={styles.modalSubtitle}>
-                Weekly class schedule
-              </ThemedText>
             </View>
 
             {/* Day Tabs */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.dayTabsContainer}
-            >
-              {weeklySchedule.map((schedule, index) => (
-                <DayTab
-                  key={schedule.day}
-                  schedule={schedule}
-                  isActive={selectedDayIndex === index}
-                  onPress={() => setSelectedDayIndex(index)}
-                />
-              ))}
-            </ScrollView>
-
-            {/* Selected Day Header */}
-            <View style={styles.selectedDayHeader}>
-              <ThemedText style={styles.selectedDayTitle}>{selectedDay.day}</ThemedText>
-              <ThemedText style={styles.selectedDayClassCount}>
-                {selectedDay.classes.length} classes
-              </ThemedText>
+            <View style={styles.dayTabsWrapper}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.dayTabsContainer}
+              >
+                {weeklySchedule.map((schedule, index) => (
+                  <DayTab
+                    key={schedule.day}
+                    schedule={schedule}
+                    isActive={selectedDayIndex === index}
+                    onPress={() => setSelectedDayIndex(index)}
+                  />
+                ))}
+              </ScrollView>
             </View>
 
-            {/* Timetable */}
+            {/* Classes List */}
             <ScrollView
-              style={styles.timetableScrollView}
+              style={styles.classesScrollView}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={[
-                styles.timetableContent,
-                { paddingBottom: insets.bottom + Spacing.md },
+                styles.classesContent,
+                { paddingBottom: insets.bottom + Spacing.lg },
               ]}
             >
-              {selectedDay.classes.map((classInfo) => (
-                <ClassTimeSlot key={classInfo.id} classInfo={classInfo} />
-              ))}
+              {selectedDay.classes.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <IconSymbol name="calendar" size={48} color={AbalColors.textMuted} />
+                  <ThemedText style={styles.emptyStateText}>
+                    No classes scheduled for this day
+                  </ThemedText>
+                </View>
+              ) : (
+                selectedDay.classes.map((classInfo) => (
+                  <ClassCard key={classInfo.id} classInfo={classInfo} />
+                ))
+              )}
             </ScrollView>
           </View>
         </View>
@@ -387,52 +397,58 @@ const styles = StyleSheet.create({
   // Modal styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  },
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   modalContent: {
+    flex: 1,
+    backgroundColor: AbalColors.background,
+    marginTop: 60,
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
+  },
+  modalHeader: {
+    paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.sm,
     backgroundColor: AbalColors.cardBackground,
     borderTopLeftRadius: BorderRadius.xl,
     borderTopRightRadius: BorderRadius.xl,
-    height: SCREEN_HEIGHT * 0.85,
-  },
-  modalHeader: {
-    padding: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: AbalColors.divider,
-  },
-  modalHandle: {
-    width: 40,
-    height: 4,
-    backgroundColor: AbalColors.border,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: Spacing.md,
   },
   modalTitleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
   },
   modalTitle: {
-    fontSize: 22,
-    lineHeight: 28,
+    fontSize: 24,
+    lineHeight: 32,
     fontWeight: '700',
     color: AbalColors.textPrimary,
   },
   closeButton: {
-    padding: 4,
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: AbalColors.textSecondary,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: AbalColors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   // Day Tabs
+  dayTabsWrapper: {
+    backgroundColor: AbalColors.cardBackground,
+    paddingBottom: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: AbalColors.divider,
+  },
   dayTabsContainer: {
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
     gap: 8,
   },
   dayTab: {
@@ -441,14 +457,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.md,
     backgroundColor: AbalColors.background,
-    minWidth: 56,
+    minWidth: 64,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   dayTabActive: {
-    backgroundColor: AbalColors.primary,
+    backgroundColor: `${AbalColors.primary}15`,
+    borderColor: AbalColors.primary,
   },
   dayTabShort: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 20,
     fontWeight: '600',
     color: AbalColors.textSecondary,
   },
@@ -456,107 +475,105 @@ const styles = StyleSheet.create({
     color: AbalColors.textPrimary,
   },
   dayTabDate: {
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 16,
     color: AbalColors.textMuted,
     marginTop: 2,
   },
   dayTabDateActive: {
-    color: AbalColors.textPrimary,
-  },
-  // Selected Day Header
-  selectedDayHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: AbalColors.divider,
-  },
-  selectedDayTitle: {
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: '700',
-    color: AbalColors.textPrimary,
-  },
-  selectedDayClassCount: {
-    fontSize: 14,
-    lineHeight: 20,
     color: AbalColors.textSecondary,
   },
-  // Timetable
-  timetableScrollView: {
+  // Classes list
+  classesScrollView: {
     flex: 1,
   },
-  timetableContent: {
+  classesContent: {
     padding: Spacing.md,
-  },
-  timeSlot: {
-    flexDirection: 'row',
-    marginBottom: Spacing.md,
-  },
-  timeColumn: {
-    width: 70,
-    paddingRight: Spacing.sm,
-  },
-  timeText: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '600',
-    color: AbalColors.textPrimary,
-  },
-  durationText: {
-    fontSize: 12,
-    lineHeight: 16,
-    color: AbalColors.textMuted,
+    gap: Spacing.sm,
   },
   classCard: {
-    flex: 1,
-    backgroundColor: AbalColors.background,
-    borderRadius: BorderRadius.md,
-    borderLeftWidth: 3,
-    padding: Spacing.sm + 2,
-  },
-  classCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: AbalColors.cardBackground,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    ...Shadows.card,
   },
-  classIconSmall: {
-    width: 32,
-    height: 32,
-    borderRadius: BorderRadius.sm,
+  classIconContainer: {
+    width: 52,
+    height: 52,
+    borderRadius: BorderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: Spacing.sm,
+    marginRight: Spacing.md,
   },
-  classCardTitleContainer: {
+  classDetails: {
     flex: 1,
   },
-  classCardTitle: {
-    fontSize: 15,
+  className: {
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '600',
+    color: AbalColors.textPrimary,
+    marginBottom: 2,
+  },
+  classLocation: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: AbalColors.textSecondary,
+  },
+  classInstructor: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: AbalColors.textMuted,
+    marginBottom: 4,
+  },
+  classTime: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '500',
+    color: AbalColors.textSecondary,
+  },
+  bookButton: {
+    backgroundColor: AbalColors.primary,
+    paddingHorizontal: Spacing.md + 4,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    marginLeft: Spacing.sm,
+  },
+  bookButtonPressed: {
+    opacity: 0.9,
+    transform: [{ scale: 0.98 }],
+  },
+  bookButtonText: {
+    fontSize: 14,
     lineHeight: 20,
     fontWeight: '600',
     color: AbalColors.textPrimary,
   },
-  instructorText: {
-    fontSize: 12,
-    lineHeight: 16,
-    color: AbalColors.textSecondary,
+  fullBadge: {
+    backgroundColor: AbalColors.textMuted,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    marginLeft: Spacing.sm,
   },
-  spotsTag: {
-    backgroundColor: AbalColors.cardBackground,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.sm,
-  },
-  spotsTagText: {
-    fontSize: 11,
-    lineHeight: 14,
+  fullBadgeText: {
+    fontSize: 14,
+    lineHeight: 20,
     fontWeight: '600',
-    color: AbalColors.textSecondary,
+    color: AbalColors.cardBackground,
   },
-  spotsTagLow: {
-    color: AbalColors.error,
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.xxl,
+    gap: Spacing.md,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    lineHeight: 22,
+    color: AbalColors.textMuted,
+    textAlign: 'center',
   },
 });
