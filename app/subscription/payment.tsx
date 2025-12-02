@@ -91,7 +91,7 @@ export default function PaymentScreen() {
             <View style={styles.codeContainer}>
               <ThemedText style={styles.codeLabel}>Your Payment Code</ThemedText>
               <ThemedText style={styles.code}>{formatPaymentCode(paymentCode)}</ThemedText>
-              
+
               <Pressable
                 onPress={handleCopyCode}
                 style={({ pressed }) => [
@@ -192,6 +192,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
+    lineHeight: 24,
     fontWeight: '600',
     color: AbalColors.textPrimary,
   },
@@ -218,6 +219,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
+    lineHeight: 32,
     fontWeight: '700',
     color: AbalColors.textPrimary,
     textAlign: 'center',
@@ -249,6 +251,7 @@ const styles = StyleSheet.create({
   },
   code: {
     fontSize: 36,
+    lineHeight: 44,
     fontWeight: '700',
     color: AbalColors.textPrimary,
     letterSpacing: 2,

@@ -1,23 +1,23 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { router } from 'expo-router';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
 
 import { AchievementBadge } from '@/components/AchievementBadge';
+import { AddWeightModal } from '@/components/AddWeightModal';
+import { GoalAchievedModal } from '@/components/GoalAchievedModal';
+import { GoalSettingModal } from '@/components/GoalSettingModal';
 import { StatCard } from '@/components/StatCard';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { AddWeightModal } from '@/components/AddWeightModal';
 import { WeightChart } from '@/components/WeightChart';
-import { GoalSettingModal } from '@/components/GoalSettingModal';
-import { GoalAchievedModal } from '@/components/GoalAchievedModal';
-import { useUser, WeightEntry } from '@/context/UserContext';
-import { AbalColors, BorderRadius, Shadows, Spacing } from '@/constants/theme';
 import {
   mockAchievements,
   mockStatsSummary,
   mockWorkoutHistory,
 } from '@/constants/mock-data';
+import { AbalColors, BorderRadius, Shadows, Spacing } from '@/constants/theme';
+import { useUser, WeightEntry } from '@/context/UserContext';
 
 type TabType = 'overview' | 'achievements' | 'history';
 type TimeRange = 'week' | 'month' | 'year';
@@ -61,23 +61,23 @@ function aggregateByWeek(entries: WeightEntry[]): { value: number; label: string
   // Get entries from the last 30 days and group by week
   const now = new Date();
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-  
+
   const recentEntries = entries.filter(e => new Date(e.date) >= thirtyDaysAgo);
-  
+
   // Group by week number
   const weekGroups: { [key: string]: number[] } = {};
-  
+
   recentEntries.forEach(entry => {
     const date = new Date(entry.date);
     const weekNum = getWeekNumber(date);
     const key = `Week ${weekNum}`;
-    
+
     if (!weekGroups[key]) {
       weekGroups[key] = [];
     }
     weekGroups[key].push(entry.weight);
   });
-  
+
   // Calculate averages and sort by week number
   return Object.entries(weekGroups)
     .sort((a, b) => {
@@ -95,23 +95,23 @@ function aggregateByMonth(entries: WeightEntry[]): { value: number; label: strin
   // Get entries from the last year and group by month
   const now = new Date();
   const oneYearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
-  
+
   const recentEntries = entries.filter(e => new Date(e.date) >= oneYearAgo);
-  
+
   // Group by month
   const monthGroups: { [key: string]: { weights: number[]; date: Date } } = {};
-  
+
   recentEntries.forEach(entry => {
     const date = new Date(entry.date);
     const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
     const monthLabel = date.toLocaleDateString('en-US', { month: 'short' });
-    
+
     if (!monthGroups[monthKey]) {
       monthGroups[monthKey] = { weights: [], date };
     }
     monthGroups[monthKey].weights.push(entry.weight);
   });
-  
+
   // Calculate averages and sort by date
   return Object.entries(monthGroups)
     .sort((a, b) => a[1].date.getTime() - b[1].date.getTime())
@@ -125,7 +125,7 @@ function getWeekData(entries: WeightEntry[]): { value: number; label: string }[]
   // Get entries from the last 7 days
   const now = new Date();
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  
+
   return entries
     .filter(e => new Date(e.date) >= sevenDaysAgo)
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
@@ -143,22 +143,22 @@ export default function ProgressScreen() {
   const [goalModalVisible, setGoalModalVisible] = useState(false);
   const [celebrationVisible, setCelebrationVisible] = useState(false);
   const { weightHistory, goalWeight, startWeight, latestWeight, addWeightEntry, setGoalWeight } = useUser();
-  
+
   // Track if goal was achieved to show celebration
   const previousLatestWeight = useRef<number | null>(null);
-  
+
   useEffect(() => {
     if (goalWeight && latestWeight && previousLatestWeight.current !== null) {
       const wasGoalAchieved = checkGoalAchieved(latestWeight, goalWeight, startWeight);
       const wasNotAchievedBefore = !checkGoalAchieved(previousLatestWeight.current, goalWeight, startWeight);
-      
+
       if (wasGoalAchieved && wasNotAchievedBefore) {
         setCelebrationVisible(true);
       }
     }
     previousLatestWeight.current = latestWeight;
   }, [latestWeight, goalWeight, startWeight]);
-  
+
   const checkGoalAchieved = (current: number | null, goal: number | null, start: number | null) => {
     if (!current || !goal || !start) return false;
     const isLosing = start > goal;
@@ -168,18 +168,18 @@ export default function ProgressScreen() {
       return current >= goal;
     }
   };
-  
+
   const isGoalAchieved = checkGoalAchieved(latestWeight, goalWeight, startWeight);
 
   // Prepare Chart Data based on time range
   const chartData = useMemo(() => {
     if (weightHistory.length === 0) return [];
-    
+
     // Sort by date ascending first
     const sortedHistory = [...weightHistory].sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
-    
+
     switch (timeRange) {
       case 'week':
         return getWeekData(sortedHistory);
@@ -200,13 +200,13 @@ export default function ProgressScreen() {
     if (!startWeight || !latestWeight || !goalWeight) return 0;
     const totalChange = Math.abs(startWeight - goalWeight);
     const currentChange = Math.abs(startWeight - latestWeight);
-    
+
     // Check if moving in right direction
     const isLosing = startWeight > goalWeight;
     const isActuallyLosing = latestWeight < startWeight;
-    
+
     if (isLosing !== isActuallyLosing) return 0; // Moving in wrong direction
-    
+
     return Math.min(Math.max((currentChange / totalChange) * 100, 0), 100);
   };
 
@@ -219,7 +219,7 @@ export default function ProgressScreen() {
       <View style={styles.weightSection}>
         <View style={styles.sectionHeader}>
           <ThemedText style={styles.sectionTitle}>Weight Progress</ThemedText>
-          <Pressable 
+          <Pressable
             style={styles.addButton}
             onPress={() => setAddModalVisible(true)}
           >
@@ -258,8 +258,8 @@ export default function ProgressScreen() {
         ) : (
           <View style={styles.emptyState}>
             <ThemedText style={styles.emptyStateText}>
-              {weightHistory.length === 0 
-                ? 'No weight data yet. Add your first entry!' 
+              {weightHistory.length === 0
+                ? 'No weight data yet. Add your first entry!'
                 : 'Not enough data for this time range. Add more entries!'}
             </ThemedText>
           </View>
@@ -267,7 +267,7 @@ export default function ProgressScreen() {
 
         {/* View Details Button */}
         {weightHistory.length > 0 && (
-          <Pressable 
+          <Pressable
             style={styles.viewDetailsButton}
             onPress={() => router.push('/progress-history')}
           >
@@ -295,15 +295,15 @@ export default function ProgressScreen() {
                 <ThemedText style={styles.targetValue}>{goalWeight} lbs</ThemedText>
               </View>
             </View>
-            
+
             <View style={styles.progressBarBg}>
               <View style={[
-                styles.progressBarFill, 
+                styles.progressBarFill,
                 { width: `${Math.min(progressPercentage, 100)}%` },
                 isGoalAchieved && styles.progressBarAchieved
               ]} />
             </View>
-            
+
             <View style={styles.goalFooter}>
               <ThemedText style={styles.goalFooterText}>
                 {isGoalAchieved ? 'You made it!' : `${remaining} lbs to go`}
@@ -319,7 +319,7 @@ export default function ProgressScreen() {
               <IconSymbol name="target" size={32} color={AbalColors.textMuted} />
               <ThemedText style={styles.noGoalTitle}>No Goal Set</ThemedText>
               <ThemedText style={styles.noGoalText}>Set a target weight to track your progress</ThemedText>
-              <Pressable 
+              <Pressable
                 style={styles.setGoalButton}
                 onPress={() => setGoalModalVisible(true)}
               >
@@ -502,6 +502,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 28,
+    lineHeight: 34,
     fontWeight: '700',
     color: AbalColors.textPrimary,
   },
@@ -706,6 +707,7 @@ const styles = StyleSheet.create({
   },
   goalValue: {
     fontSize: 24,
+    lineHeight: 32,
     fontWeight: '700',
     color: AbalColors.textPrimary,
   },

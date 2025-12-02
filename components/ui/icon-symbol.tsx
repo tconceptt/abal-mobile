@@ -38,6 +38,19 @@ const MAPPING = {
   'star.fill': 'star',
   'calendar': 'event',
   
+  // Workout icons
+  'play.fill': 'play-arrow',
+  'stop.fill': 'stop',
+  'pause.fill': 'pause',
+  'timer': 'timer',
+  'bolt.fill': 'bolt',
+  'figure.run': 'directions-run',
+  'figure.dance': 'sports-gymnastics',
+  'figure.strengthtraining.traditional': 'fitness-center',
+  'music.note': 'music-note',
+  'waveform.path.ecg': 'monitor-heart',
+  'figure.indoor.cycle': 'pedal-bike',
+  
   // UI icons
   'bell.fill': 'notifications',
   'bell': 'notifications-none',
@@ -57,6 +70,15 @@ const MAPPING = {
   'photo.fill': 'photo',
   'hand.thumbsup.fill': 'thumb-up',
   'bubble.right.fill': 'chat-bubble',
+  
+  // Progress icons
+  'scalemass.fill': 'monitor-weight',
+  'shoe.fill': 'directions-walk',
+  'drop.fill': 'water-drop',
+  'bed.double.fill': 'bed',
+  'arrow.up.right': 'trending-up',
+  'arrow.down.right': 'trending-down',
+  'equal': 'trending-flat',
 } as IconMapping;
 
 /**

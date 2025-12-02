@@ -1,21 +1,16 @@
 import { router } from 'expo-router';
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ActivityItem } from '@/components/ActivityItem';
+import { ClassScheduleCard } from '@/components/ClassScheduleCard';
 import { Header } from '@/components/Header';
 import { MembershipCard } from '@/components/MembershipCard';
-import { ProgressCard } from '@/components/ProgressCard';
+import { SwipableProgressCards } from '@/components/SwipableProgressCards';
 import { ThemedText } from '@/components/themed-text';
+import { WorkoutCard } from '@/components/WorkoutCard';
 import { AbalColors, Spacing } from '@/constants/theme';
-import {
-  dummyFunctions,
-  mockActivities,
-  mockMembership,
-  mockProgressMetrics,
-  mockUser,
-} from '@/constants/mock-data';
+import { mockMembership, mockUser } from '@/constants/mock-data';
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -26,6 +21,16 @@ export default function HomeScreen() {
 
   const handleViewAllProgress = () => {
     router.push('/(tabs)/progress');
+  };
+
+  const handleStartWorkout = () => {
+    console.log('Workout started!');
+    // TODO: Implement workout tracking
+  };
+
+  const handleStopWorkout = () => {
+    console.log('Workout ended!');
+    // TODO: Save workout data
   };
 
   return (
@@ -42,44 +47,31 @@ export default function HomeScreen() {
         {/* Membership Card */}
         <MembershipCard
           membership={mockMembership}
+          userName={mockUser.name}
           onRenewPress={handleRenewSubscription}
         />
 
-        {/* Recent Activity Section */}
+        {/* Workout Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <ThemedText style={styles.sectionTitle}>Recent Activity</ThemedText>
-            <Pressable onPress={dummyFunctions.onViewAllActivities} hitSlop={8}>
-              <ThemedText style={styles.viewAllLink}>View All</ThemedText>
-            </Pressable>
+            <ThemedText style={styles.sectionTitle}>Today's Workout</ThemedText>
           </View>
-
-          {/* Activity Items */}
-          {mockActivities.slice(0, 2).map((activity) => (
-            <ActivityItem key={activity.id} activity={activity} />
-          ))}
+          <WorkoutCard
+            onStartWorkout={handleStartWorkout}
+            onStopWorkout={handleStopWorkout}
+          />
         </View>
 
-        {/* My Progress Section */}
+        {/* Class Schedule Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <ThemedText style={styles.sectionTitle}>My Progress</ThemedText>
-            <Pressable onPress={handleViewAllProgress} hitSlop={8}>
-              <ThemedText style={styles.viewAllLink}>View All</ThemedText>
-            </Pressable>
+            <ThemedText style={styles.sectionTitle}>Classes</ThemedText>
           </View>
-
-          {/* Horizontal scroll of progress cards */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.progressScrollContent}
-          >
-            {mockProgressMetrics.map((metric) => (
-              <ProgressCard key={metric.id} metric={metric} />
-            ))}
-          </ScrollView>
+          <ClassScheduleCard />
         </View>
+
+        {/* My Progress Section - Swipable Cards */}
+        <SwipableProgressCards onViewAll={handleViewAllProgress} />
 
         {/* Bottom spacing */}
         <View style={styles.bottomSpacer} />
@@ -118,10 +110,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: AbalColors.textSecondary,
-  },
-  progressScrollContent: {
-    paddingHorizontal: Spacing.md,
-    paddingBottom: Spacing.sm,
   },
   bottomSpacer: {
     height: Spacing.xl,

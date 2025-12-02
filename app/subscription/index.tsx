@@ -5,8 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { AbalColors, BorderRadius, Shadows, Spacing } from '@/constants/theme';
 import { mockMembership, mockPaymentHistory } from '@/constants/mock-data';
+import { AbalColors, BorderRadius, Shadows, Spacing } from '@/constants/theme';
 
 export default function SubscriptionScreen() {
   const insets = useSafeAreaInsets();
@@ -76,7 +76,7 @@ export default function SubscriptionScreen() {
         {/* Recent Payments */}
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Recent Payments</ThemedText>
-          
+
           {mockPaymentHistory.slice(0, 3).map((payment) => (
             <View key={payment.id} style={styles.paymentItem}>
               <View style={styles.paymentInfo}>
@@ -132,6 +132,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
+    lineHeight: 24,
     fontWeight: '600',
     color: AbalColors.textPrimary,
   },
@@ -163,6 +164,7 @@ const styles = StyleSheet.create({
   },
   planName: {
     fontSize: 28,
+    lineHeight: 34,
     fontWeight: '700',
     color: AbalColors.textPrimary,
     marginTop: 4,

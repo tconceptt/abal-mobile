@@ -5,8 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { AbalColors, BorderRadius, Shadows, Spacing } from '@/constants/theme';
 import { mockPaymentHistory } from '@/constants/mock-data';
+import { AbalColors, BorderRadius, Shadows, Spacing } from '@/constants/theme';
 
 export default function PaymentHistoryScreen() {
   const insets = useSafeAreaInsets();
@@ -118,6 +118,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
+    lineHeight: 24,
     fontWeight: '600',
     color: AbalColors.textPrimary,
   },
