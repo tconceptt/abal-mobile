@@ -59,7 +59,7 @@ const getDaysAgo = (days: number): Date => {
 };
 
 /**
- * iOS HealthKit implementation
+ * iOS HealthKit implementation using @kingstinct/react-native-healthkit
  */
 const useIOSHealthKit = () => {
   const [state, setState] = useState<HealthDataState>({
@@ -69,17 +69,6 @@ const useIOSHealthKit = () => {
     isAuthorized: false,
     isAvailable: false,
   });
-
-  // Dynamic import to avoid issues on Android
-  const getAppleHealthKit = useCallback(async () => {
-    try {
-      const AppleHealthKit = require('react-native-health').default;
-      return AppleHealthKit;
-    } catch (error) {
-      console.log('HealthKit not available:', error);
-      return null;
-    }
-  }, []);
 
   const initializeHealthKit = useCallback(async () => {
     if (Platform.OS !== 'ios') {
@@ -93,164 +82,128 @@ const useIOSHealthKit = () => {
     }
 
     try {
-      const AppleHealthKit = await getAppleHealthKit();
-      if (!AppleHealthKit) {
+      // Dynamic import to avoid issues on Android
+      const HealthKit = await import('@kingstinct/react-native-healthkit');
+      
+      // Check if HealthKit is available on this device
+      const isAvailable = await HealthKit.isHealthDataAvailable();
+      
+      if (!isAvailable) {
         setState((prev) => ({
           ...prev,
           isLoading: false,
           isAvailable: false,
-          error: 'HealthKit module not found',
+          error: 'HealthKit is not available on this device',
         }));
         return;
       }
 
-      const permissions = {
-        permissions: {
-          read: [
-            AppleHealthKit.Constants.Permissions.StepCount,
-            AppleHealthKit.Constants.Permissions.ActiveEnergyBurned,
-            AppleHealthKit.Constants.Permissions.BasalEnergyBurned,
-            AppleHealthKit.Constants.Permissions.DistanceWalkingRunning,
-          ],
-          write: [],
-        },
-      };
+      setState((prev) => ({
+        ...prev,
+        isAvailable: true,
+      }));
 
-      AppleHealthKit.initHealthKit(permissions, (error: string) => {
-        if (error) {
-          console.log('HealthKit init error:', error);
-          setState((prev) => ({
-            ...prev,
-            isLoading: false,
-            isAvailable: true,
-            isAuthorized: false,
-            error: 'Failed to initialize HealthKit. Please grant permissions in Settings.',
-          }));
-          return;
-        }
-
-        setState((prev) => ({
-          ...prev,
-          isAvailable: true,
-          isAuthorized: true,
-        }));
+      // Request authorization for the data types we need
+      await HealthKit.requestAuthorization({
+        toRead: [
+          'HKQuantityTypeIdentifierStepCount',
+          'HKQuantityTypeIdentifierActiveEnergyBurned',
+          'HKQuantityTypeIdentifierBasalEnergyBurned',
+          'HKQuantityTypeIdentifierDistanceWalkingRunning',
+        ],
       });
+
+      setState((prev) => ({
+        ...prev,
+        isAuthorized: true,
+        isLoading: false,
+      }));
     } catch (error) {
       console.error('HealthKit initialization error:', error);
       setState((prev) => ({
         ...prev,
         isLoading: false,
         isAvailable: false,
-        error: 'HealthKit initialization failed',
+        error: error instanceof Error ? error.message : 'HealthKit initialization failed',
       }));
     }
-  }, [getAppleHealthKit]);
+  }, []);
 
   const fetchSteps = useCallback(async (): Promise<{ today: number; weeklyData: number[] }> => {
-    return new Promise(async (resolve) => {
-      try {
-        const AppleHealthKit = await getAppleHealthKit();
-        if (!AppleHealthKit) {
-          resolve({ today: 0, weeklyData: [0, 0, 0, 0, 0, 0, 0] });
-          return;
-        }
+    try {
+      const HealthKit = await import('@kingstinct/react-native-healthkit');
+      const weeklyData: number[] = [];
 
-        const weeklyData: number[] = [];
-        let todaySteps = 0;
+      // Fetch steps for each day of the past week
+      for (let i = 6; i >= 0; i--) {
+        const date = getDaysAgo(i);
+        const startDate = getStartOfDay(date);
+        const endDate = getEndOfDay(date);
 
-        // Fetch steps for each day of the past week
-        const fetchDaySteps = (dayIndex: number): Promise<number> => {
-          return new Promise((resolveDay) => {
-            const date = getDaysAgo(6 - dayIndex); // Start from 6 days ago to today
-            const options = {
-              date: date.toISOString(),
-              includeManuallyAdded: true,
-            };
-
-            AppleHealthKit.getStepCount(options, (err: string, results: { value: number }) => {
-              if (err) {
-                console.log(`Error fetching steps for day ${dayIndex}:`, err);
-                resolveDay(0);
-                return;
-              }
-              resolveDay(results?.value || 0);
-            });
+        try {
+          // Query step count samples for this day
+          const result = await HealthKit.queryQuantitySamples('HKQuantityTypeIdentifierStepCount', {
+            from: startDate,
+            to: endDate,
           });
-        };
 
-        // Fetch all 7 days
-        for (let i = 0; i < 7; i++) {
-          const steps = await fetchDaySteps(i);
-          weeklyData.push(Math.round(steps));
+          // Sum all step samples for the day
+          const daySteps = result.samples?.reduce(
+            (sum: number, sample: { quantity: number }) => sum + (sample.quantity || 0),
+            0
+          ) || 0;
+          
+          weeklyData.push(Math.round(daySteps));
+        } catch (err) {
+          console.log(`Error fetching steps for day ${i}:`, err);
+          weeklyData.push(0);
         }
-
-        todaySteps = weeklyData[6]; // Today is the last item
-
-        resolve({ today: todaySteps, weeklyData });
-      } catch (error) {
-        console.error('Error fetching steps:', error);
-        resolve({ today: 0, weeklyData: [0, 0, 0, 0, 0, 0, 0] });
       }
-    });
-  }, [getAppleHealthKit]);
+
+      return { today: weeklyData[6], weeklyData };
+    } catch (error) {
+      console.error('Error fetching steps:', error);
+      return { today: 0, weeklyData: [0, 0, 0, 0, 0, 0, 0] };
+    }
+  }, []);
 
   const fetchCalories = useCallback(async (): Promise<{ today: number; weeklyData: number[] }> => {
-    return new Promise(async (resolve) => {
-      try {
-        const AppleHealthKit = await getAppleHealthKit();
-        if (!AppleHealthKit) {
-          resolve({ today: 0, weeklyData: [0, 0, 0, 0, 0, 0, 0] });
-          return;
-        }
+    try {
+      const HealthKit = await import('@kingstinct/react-native-healthkit');
+      const weeklyData: number[] = [];
 
-        const weeklyData: number[] = [];
-        let todayCalories = 0;
+      // Fetch calories for each day of the past week
+      for (let i = 6; i >= 0; i--) {
+        const date = getDaysAgo(i);
+        const startDate = getStartOfDay(date);
+        const endDate = getEndOfDay(date);
 
-        // Fetch calories for each day of the past week
-        const fetchDayCalories = (dayIndex: number): Promise<number> => {
-          return new Promise((resolveDay) => {
-            const date = getDaysAgo(6 - dayIndex);
-            const startDate = getStartOfDay(date);
-            const endDate = getEndOfDay(date);
-            
-            const options = {
-              startDate: startDate.toISOString(),
-              endDate: endDate.toISOString(),
-            };
-
-            // Get active energy burned
-            AppleHealthKit.getActiveEnergyBurned(
-              options,
-              (err: string, results: Array<{ value: number }>) => {
-                if (err) {
-                  console.log(`Error fetching active calories for day ${dayIndex}:`, err);
-                  resolveDay(0);
-                  return;
-                }
-
-                // Sum all active energy values for the day
-                const totalActive = results?.reduce((sum, item) => sum + (item.value || 0), 0) || 0;
-                resolveDay(Math.round(totalActive));
-              }
-            );
+        try {
+          // Query active energy burned samples for this day
+          const result = await HealthKit.queryQuantitySamples('HKQuantityTypeIdentifierActiveEnergyBurned', {
+            from: startDate,
+            to: endDate,
           });
-        };
 
-        // Fetch all 7 days
-        for (let i = 0; i < 7; i++) {
-          const calories = await fetchDayCalories(i);
-          weeklyData.push(calories);
+          // Sum all calorie samples for the day
+          const dayCalories = result.samples?.reduce(
+            (sum: number, sample: { quantity: number }) => sum + (sample.quantity || 0),
+            0
+          ) || 0;
+          
+          weeklyData.push(Math.round(dayCalories));
+        } catch (err) {
+          console.log(`Error fetching calories for day ${i}:`, err);
+          weeklyData.push(0);
         }
-
-        todayCalories = weeklyData[6]; // Today is the last item
-
-        resolve({ today: todayCalories, weeklyData });
-      } catch (error) {
-        console.error('Error fetching calories:', error);
-        resolve({ today: 0, weeklyData: [0, 0, 0, 0, 0, 0, 0] });
       }
-    });
-  }, [getAppleHealthKit]);
+
+      return { today: weeklyData[6], weeklyData };
+    } catch (error) {
+      console.error('Error fetching calories:', error);
+      return { today: 0, weeklyData: [0, 0, 0, 0, 0, 0, 0] };
+    }
+  }, []);
 
   const refreshData = useCallback(async () => {
     if (!state.isAuthorized) {
@@ -593,4 +546,3 @@ export function useHealthData() {
 }
 
 export default useHealthData;
-
