@@ -10,8 +10,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FeedItem } from '@/components/FeedItem';
 import { ThemedText } from '@/components/themed-text';
+import { FeedPost, mockFeedPosts } from '@/constants/mock-data';
 import { AbalColors, BorderRadius, Spacing } from '@/constants/theme';
-import { mockFeedPosts, FeedPost } from '@/constants/mock-data';
 
 type FilterType = 'all' | 'workouts' | 'milestones' | 'checkins';
 
@@ -49,10 +49,10 @@ export default function FeedScreen() {
       currentPosts.map((post) =>
         post.id === postId
           ? {
-              ...post,
-              hasLiked: !post.hasLiked,
-              likes: post.hasLiked ? post.likes - 1 : post.likes + 1,
-            }
+            ...post,
+            hasLiked: !post.hasLiked,
+            likes: post.hasLiked ? post.likes - 1 : post.likes + 1,
+          }
           : post
       )
     );
@@ -143,6 +143,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 28,
+    lineHeight: 34,
     fontWeight: '700',
     color: AbalColors.textPrimary,
   },

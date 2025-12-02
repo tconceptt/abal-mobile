@@ -4,13 +4,13 @@ import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { GoalSettingModal } from '@/components/GoalSettingModal';
 import { ProfileMenuItem, ProfileMenuSection } from '@/components/ProfileMenuItem';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { AbalColors, BorderRadius, Spacing } from '@/constants/theme';
 import { mockMembership, mockUser } from '@/constants/mock-data';
+import { AbalColors, BorderRadius, Spacing } from '@/constants/theme';
 import { useUser } from '@/context/UserContext';
-import { GoalSettingModal } from '@/components/GoalSettingModal';
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -176,7 +176,7 @@ export default function ProfileScreen() {
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      <GoalSettingModal 
+      <GoalSettingModal
         visible={goalModalVisible}
         onClose={() => setGoalModalVisible(false)}
         currentGoal={goalWeight}
@@ -200,6 +200,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 28,
+    lineHeight: 34,
     fontWeight: '700',
     color: AbalColors.textPrimary,
   },
@@ -230,6 +231,7 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontSize: 20,
+    lineHeight: 28,
     fontWeight: '700',
     color: AbalColors.textPrimary,
   },
@@ -269,6 +271,7 @@ const styles = StyleSheet.create({
   },
   membershipType: {
     fontSize: 20,
+    lineHeight: 28,
     fontWeight: '700',
     color: AbalColors.textPrimary,
     marginTop: 2,

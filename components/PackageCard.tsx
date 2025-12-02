@@ -3,8 +3,8 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { AbalColors, BorderRadius, Shadows, Spacing } from '@/constants/theme';
 import { SubscriptionPackage } from '@/constants/mock-data';
+import { AbalColors, BorderRadius, Shadows, Spacing } from '@/constants/theme';
 
 interface PackageCardProps {
   package_: SubscriptionPackage;
@@ -100,6 +100,7 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 20,
+    lineHeight: 28,
     fontWeight: '700',
     color: AbalColors.textPrimary,
   },
@@ -130,9 +131,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'baseline',
     marginBottom: Spacing.md,
+    paddingTop: 4,
   },
   price: {
     fontSize: 32,
+    lineHeight: 40,
     fontWeight: '700',
     color: AbalColors.textPrimary,
   },

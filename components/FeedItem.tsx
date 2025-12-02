@@ -4,8 +4,8 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { AbalColors, BorderRadius, Shadows, Spacing } from '@/constants/theme';
 import { dummyFunctions, FeedPost } from '@/constants/mock-data';
+import { AbalColors, BorderRadius, Shadows, Spacing } from '@/constants/theme';
 
 interface FeedItemProps {
   post: FeedPost;
@@ -161,6 +161,7 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontSize: 15,
+    lineHeight: 20,
     fontWeight: '600',
     color: AbalColors.textPrimary,
   },
