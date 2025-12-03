@@ -1,8 +1,8 @@
+import { AbalColors, BorderRadius, Shadows, Spacing } from '@/constants/theme';
 import React, { useEffect, useRef } from 'react';
-import { Modal, StyleSheet, View, Pressable, Animated } from 'react-native';
+import { Animated, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { ThemedText } from './themed-text';
 import { IconSymbol } from './ui/icon-symbol';
-import { AbalColors, BorderRadius, Spacing, Shadows } from '@/constants/theme';
 
 interface GoalAchievedModalProps {
   visible: boolean;

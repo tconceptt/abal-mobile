@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Modal, StyleSheet, TextInput, View, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
+import { AbalColors, BorderRadius, Shadows, Spacing } from '@/constants/theme';
+import React, { useEffect, useState } from 'react';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { ThemedText } from './themed-text';
-import { AbalColors, BorderRadius, Spacing, Shadows } from '@/constants/theme';
 
 interface GoalSettingModalProps {
   visible: boolean;

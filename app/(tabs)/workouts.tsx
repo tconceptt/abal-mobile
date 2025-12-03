@@ -1,6 +1,14 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import {
+  Barbell,
+  IconProps,
+  Lightning,
+  PersonSimpleRun,
+  PersonSimpleTaiChi,
+  Target,
+} from 'phosphor-react-native';
+import React, { ComponentType, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -20,16 +28,17 @@ import { useWorkouts, Workout, WorkoutSource } from '@/hooks/useWorkouts';
 type FilterTab = 'all' | 'cardio' | 'strength';
 
 // Workout type icons and colors
-const workoutTypeConfig: Record<string, { icon: string; color: string; bgColor: string }> = {
-  cardio: { icon: '🏃', color: '#EF4444', bgColor: '#FEE2E2' },
-  strength: { icon: '💪', color: '#8B5CF6', bgColor: '#EDE9FE' },
-  flexibility: { icon: '🧘', color: '#10B981', bgColor: '#D1FAE5' },
-  mixed: { icon: '⚡', color: '#F59E0B', bgColor: '#FEF3C7' },
-  other: { icon: '🎯', color: '#6366F1', bgColor: '#E0E7FF' },
+const workoutTypeConfig: Record<string, { Icon: ComponentType<IconProps>; color: string; bgColor: string }> = {
+  cardio: { Icon: PersonSimpleRun, color: '#EF4444', bgColor: '#FEE2E2' },
+  strength: { Icon: Barbell, color: '#8B5CF6', bgColor: '#EDE9FE' },
+  flexibility: { Icon: PersonSimpleTaiChi, color: '#10B981', bgColor: '#D1FAE5' },
+  mixed: { Icon: Lightning, color: '#F59E0B', bgColor: '#FEF3C7' },
+  other: { Icon: Target, color: '#6366F1', bgColor: '#E0E7FF' },
 };
 
 function WorkoutItemCard({ workout }: { workout: Workout }) {
   const config = workoutTypeConfig[workout.type] || workoutTypeConfig.other;
+  const { Icon } = config;
   
   const formatDate = (date: Date) => {
     const now = new Date();
@@ -61,7 +70,7 @@ function WorkoutItemCard({ workout }: { workout: Workout }) {
       <View style={styles.workoutCardContent}>
         {/* Icon */}
         <View style={[styles.workoutIcon, { backgroundColor: config.bgColor }]}>
-          <ThemedText style={styles.workoutEmoji}>{config.icon}</ThemedText>
+          <Icon size={24} color={config.color} weight="fill" />
         </View>
 
         {/* Info */}
@@ -178,8 +187,7 @@ export default function WorkoutsScreen() {
   const filteredWorkouts = getFilteredWorkouts(activeFilter);
 
   const handleStartWorkout = () => {
-    // TODO: Navigate to start workout screen
-    console.log('Start new workout');
+    router.push('/start-workout');
   };
 
   const handleProfilePress = () => {
@@ -399,9 +407,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: Spacing.md,
-  },
-  workoutEmoji: {
-    fontSize: 24,
   },
   workoutInfo: {
     flex: 1,
