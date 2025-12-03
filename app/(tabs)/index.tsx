@@ -23,6 +23,10 @@ export default function HomeScreen() {
     router.push('/(tabs)/progress');
   };
 
+  const handleProfilePress = () => {
+    router.push('/profile');
+  };
+
   const handleStartWorkout = () => {
     console.log('Workout started!');
     // TODO: Implement workout tracking
@@ -36,7 +40,7 @@ export default function HomeScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
-      <Header user={mockUser} hasNotification />
+      <Header user={mockUser} hasNotification onProfilePress={handleProfilePress} />
 
       {/* Scrollable content */}
       <ScrollView

@@ -1,7 +1,17 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 
+// Storage keys
+const HEALTH_DATA_KEY = '@abal/health_data';
+
 // Types for health data
+export interface DailyHealthRecord {
+  date: string; // YYYY-MM-DD format
+  steps: number;
+  calories: number;
+}
+
 export interface HealthData {
   steps: {
     today: number;
@@ -23,7 +33,7 @@ export interface HealthDataState {
   isAvailable: boolean;
 }
 
-// Default state with placeholder data
+// Default state
 const DEFAULT_HEALTH_DATA: HealthData = {
   steps: {
     today: 0,
@@ -37,29 +47,92 @@ const DEFAULT_HEALTH_DATA: HealthData = {
   },
 };
 
-// Helper to get start of day
-const getStartOfDay = (date: Date = new Date()): Date => {
-  const start = new Date(date);
+// Helper to get today's date as YYYY-MM-DD
+const getTodayDateString = (): string => {
+  const today = new Date();
+  return today.toISOString().split('T')[0];
+};
+
+// Helper to get date string for N days ago
+const getDateStringDaysAgo = (days: number): string => {
+  const date = new Date();
+  date.setDate(date.getDate() - days);
+  return date.toISOString().split('T')[0];
+};
+
+// Helper to get start of today
+const getStartOfToday = (): Date => {
+  const start = new Date();
   start.setHours(0, 0, 0, 0);
   return start;
 };
 
-// Helper to get end of day
-const getEndOfDay = (date: Date = new Date()): Date => {
-  const end = new Date(date);
+// Helper to get end of today
+const getEndOfToday = (): Date => {
+  const end = new Date();
   end.setHours(23, 59, 59, 999);
   return end;
 };
 
-// Helper to get date N days ago
-const getDaysAgo = (days: number): Date => {
-  const date = new Date();
-  date.setDate(date.getDate() - days);
-  return date;
-};
+/**
+ * Load stored health history from AsyncStorage
+ */
+async function loadStoredHistory(): Promise<Record<string, DailyHealthRecord>> {
+  try {
+    const stored = await AsyncStorage.getItem(HEALTH_DATA_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.error('Error loading health history:', error);
+  }
+  return {};
+}
 
 /**
- * iOS HealthKit implementation using @kingstinct/react-native-healthkit
+ * Save health record to AsyncStorage
+ */
+async function saveHealthRecord(record: DailyHealthRecord): Promise<void> {
+  try {
+    const history = await loadStoredHistory();
+    history[record.date] = record;
+    
+    // Keep only last 30 days of data to prevent storage bloat
+    const thirtyDaysAgo = getDateStringDaysAgo(30);
+    const filteredHistory: Record<string, DailyHealthRecord> = {};
+    for (const [date, data] of Object.entries(history)) {
+      if (date >= thirtyDaysAgo) {
+        filteredHistory[date] = data;
+      }
+    }
+    
+    await AsyncStorage.setItem(HEALTH_DATA_KEY, JSON.stringify(filteredHistory));
+  } catch (error) {
+    console.error('Error saving health record:', error);
+  }
+}
+
+/**
+ * Build weekly data from stored history
+ */
+function buildWeeklyData(history: Record<string, DailyHealthRecord>): { steps: number[]; calories: number[] } {
+  const stepsData: number[] = [];
+  const caloriesData: number[] = [];
+  
+  // Get last 7 days (oldest first for chart display)
+  for (let i = 6; i >= 0; i--) {
+    const dateString = getDateStringDaysAgo(i);
+    const record = history[dateString];
+    stepsData.push(record?.steps || 0);
+    caloriesData.push(record?.calories || 0);
+  }
+  
+  return { steps: stepsData, calories: caloriesData };
+}
+
+/**
+ * iOS HealthKit implementation - SIMPLIFIED
+ * Only fetches TODAY's data, stores history locally
  */
 const useIOSHealthKit = () => {
   const [state, setState] = useState<HealthDataState>({
@@ -69,6 +142,31 @@ const useIOSHealthKit = () => {
     isAuthorized: false,
     isAvailable: false,
   });
+
+  // Load stored history on mount
+  useEffect(() => {
+    loadStoredHistory().then((history) => {
+      const { steps, calories } = buildWeeklyData(history);
+      const today = getTodayDateString();
+      const todayRecord = history[today];
+      
+      setState((prev) => ({
+        ...prev,
+        data: {
+          steps: {
+            today: todayRecord?.steps || 0,
+            weeklyData: steps,
+            lastUpdated: null,
+          },
+          calories: {
+            today: todayRecord?.calories || 0,
+            weeklyData: calories,
+            lastUpdated: null,
+          },
+        },
+      }));
+    });
+  }, []);
 
   const initializeHealthKit = useCallback(async () => {
     if (Platform.OS !== 'ios') {
@@ -82,10 +180,8 @@ const useIOSHealthKit = () => {
     }
 
     try {
-      // Dynamic import to avoid issues on Android
       const HealthKit = await import('@kingstinct/react-native-healthkit');
       
-      // Check if HealthKit is available on this device
       const isAvailable = await HealthKit.isHealthDataAvailable();
       
       if (!isAvailable) {
@@ -98,18 +194,13 @@ const useIOSHealthKit = () => {
         return;
       }
 
-      setState((prev) => ({
-        ...prev,
-        isAvailable: true,
-      }));
+      setState((prev) => ({ ...prev, isAvailable: true }));
 
-      // Request authorization for the data types we need
+      // Request authorization
       await HealthKit.requestAuthorization({
         toRead: [
           'HKQuantityTypeIdentifierStepCount',
           'HKQuantityTypeIdentifierActiveEnergyBurned',
-          'HKQuantityTypeIdentifierBasalEnergyBurned',
-          'HKQuantityTypeIdentifierDistanceWalkingRunning',
         ],
       });
 
@@ -129,79 +220,32 @@ const useIOSHealthKit = () => {
     }
   }, []);
 
-  const fetchSteps = useCallback(async (): Promise<{ today: number; weeklyData: number[] }> => {
+  const fetchTodayData = useCallback(async () => {
     try {
       const HealthKit = await import('@kingstinct/react-native-healthkit');
-      const weeklyData: number[] = [];
+      const startDate = getStartOfToday();
+      const endDate = getEndOfToday();
 
-      // Fetch steps for each day of the past week
-      for (let i = 6; i >= 0; i--) {
-        const date = getDaysAgo(i);
-        const startDate = getStartOfDay(date);
-        const endDate = getEndOfDay(date);
+      // Fetch TODAY's steps only - single fast call
+      const stepsResult = await HealthKit.queryStatisticsForQuantity(
+        'HKQuantityTypeIdentifierStepCount',
+        ['cumulativeSum'],
+        { filter: { startDate, endDate } }
+      );
+      const todaySteps = Math.round(stepsResult.sumQuantity?.quantity || 0);
 
-        try {
-          // Query step count samples for this day
-          const result = await HealthKit.queryQuantitySamples('HKQuantityTypeIdentifierStepCount', {
-            from: startDate,
-            to: endDate,
-          });
+      // Fetch TODAY's calories only - single fast call
+      const caloriesResult = await HealthKit.queryStatisticsForQuantity(
+        'HKQuantityTypeIdentifierActiveEnergyBurned',
+        ['cumulativeSum'],
+        { filter: { startDate, endDate } }
+      );
+      const todayCalories = Math.round(caloriesResult.sumQuantity?.quantity || 0);
 
-          // Sum all step samples for the day
-          const daySteps = result.samples?.reduce(
-            (sum: number, sample: { quantity: number }) => sum + (sample.quantity || 0),
-            0
-          ) || 0;
-          
-          weeklyData.push(Math.round(daySteps));
-        } catch (err) {
-          console.log(`Error fetching steps for day ${i}:`, err);
-          weeklyData.push(0);
-        }
-      }
-
-      return { today: weeklyData[6], weeklyData };
+      return { steps: todaySteps, calories: todayCalories };
     } catch (error) {
-      console.error('Error fetching steps:', error);
-      return { today: 0, weeklyData: [0, 0, 0, 0, 0, 0, 0] };
-    }
-  }, []);
-
-  const fetchCalories = useCallback(async (): Promise<{ today: number; weeklyData: number[] }> => {
-    try {
-      const HealthKit = await import('@kingstinct/react-native-healthkit');
-      const weeklyData: number[] = [];
-
-      // Fetch calories for each day of the past week
-      for (let i = 6; i >= 0; i--) {
-        const date = getDaysAgo(i);
-        const startDate = getStartOfDay(date);
-        const endDate = getEndOfDay(date);
-
-        try {
-          // Query active energy burned samples for this day
-          const result = await HealthKit.queryQuantitySamples('HKQuantityTypeIdentifierActiveEnergyBurned', {
-            from: startDate,
-            to: endDate,
-          });
-
-          // Sum all calorie samples for the day
-          const dayCalories = result.samples?.reduce(
-            (sum: number, sample: { quantity: number }) => sum + (sample.quantity || 0),
-            0
-          ) || 0;
-          
-          weeklyData.push(Math.round(dayCalories));
-        } catch (err) {
-          console.log(`Error fetching calories for day ${i}:`, err);
-          weeklyData.push(0);
-        }
-      }
-
-      return { today: weeklyData[6], weeklyData };
-    } catch (error) {
-      console.error('Error fetching calories:', error);
-      return { today: 0, weeklyData: [0, 0, 0, 0, 0, 0, 0] };
+      console.error('Error fetching today data:', error);
+      return { steps: 0, calories: 0 };
     }
   }, []);
 
@@ -213,21 +257,33 @@ const useIOSHealthKit = () => {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      const [stepsResult, caloriesResult] = await Promise.all([
-        fetchSteps(),
-        fetchCalories(),
-      ]);
+      // Fetch only TODAY's data (fast!)
+      const { steps: todaySteps, calories: todayCalories } = await fetchTodayData();
+
+      // Save to local storage
+      const today = getTodayDateString();
+      await saveHealthRecord({
+        date: today,
+        steps: todaySteps,
+        calories: todayCalories,
+      });
+
+      // Load full history to build weekly chart
+      const history = await loadStoredHistory();
+      const weeklyData = buildWeeklyData(history);
 
       setState((prev) => ({
         ...prev,
         isLoading: false,
         data: {
           steps: {
-            ...stepsResult,
+            today: todaySteps,
+            weeklyData: weeklyData.steps,
             lastUpdated: new Date(),
           },
           calories: {
-            ...caloriesResult,
+            today: todayCalories,
+            weeklyData: weeklyData.calories,
             lastUpdated: new Date(),
           },
         },
@@ -240,7 +296,7 @@ const useIOSHealthKit = () => {
         error: 'Failed to fetch health data',
       }));
     }
-  }, [state.isAuthorized, fetchSteps, fetchCalories]);
+  }, [state.isAuthorized, fetchTodayData]);
 
   // Initialize on mount
   useEffect(() => {
@@ -262,7 +318,7 @@ const useIOSHealthKit = () => {
 };
 
 /**
- * Android Health Connect implementation
+ * Android Health Connect implementation - SIMPLIFIED
  */
 const useAndroidHealthConnect = () => {
   const [state, setState] = useState<HealthDataState>({
@@ -273,11 +329,36 @@ const useAndroidHealthConnect = () => {
     isAvailable: false,
   });
 
+  // Load stored history on mount
+  useEffect(() => {
+    loadStoredHistory().then((history) => {
+      const { steps, calories } = buildWeeklyData(history);
+      const today = getTodayDateString();
+      const todayRecord = history[today];
+      
+      setState((prev) => ({
+        ...prev,
+        data: {
+          steps: {
+            today: todayRecord?.steps || 0,
+            weeklyData: steps,
+            lastUpdated: null,
+          },
+          calories: {
+            today: todayRecord?.calories || 0,
+            weeklyData: calories,
+            lastUpdated: null,
+          },
+        },
+      }));
+    });
+  }, []);
+
   const getHealthConnect = useCallback(async () => {
     try {
-      const { initialize, requestPermission, readRecords, getSdkStatus, SdkAvailabilityStatus } = 
+      const { initialize, requestPermission, aggregateRecord, getSdkStatus, SdkAvailabilityStatus } = 
         require('react-native-health-connect');
-      return { initialize, requestPermission, readRecords, getSdkStatus, SdkAvailabilityStatus };
+      return { initialize, requestPermission, aggregateRecord, getSdkStatus, SdkAvailabilityStatus };
     } catch (error) {
       console.log('Health Connect not available:', error);
       return null;
@@ -307,19 +388,17 @@ const useAndroidHealthConnect = () => {
         return;
       }
 
-      // Check SDK availability
       const status = await HealthConnect.getSdkStatus();
       if (status !== HealthConnect.SdkAvailabilityStatus.SDK_AVAILABLE) {
         setState((prev) => ({
           ...prev,
           isLoading: false,
           isAvailable: false,
-          error: 'Health Connect is not available on this device. Please install it from the Play Store.',
+          error: 'Health Connect is not available. Please install it from the Play Store.',
         }));
         return;
       }
 
-      // Initialize Health Connect
       const initialized = await HealthConnect.initialize();
       if (!initialized) {
         setState((prev) => ({
@@ -332,16 +411,11 @@ const useAndroidHealthConnect = () => {
         return;
       }
 
-      setState((prev) => ({
-        ...prev,
-        isAvailable: true,
-      }));
+      setState((prev) => ({ ...prev, isAvailable: true }));
 
-      // Request permissions
       const permissions = await HealthConnect.requestPermission([
         { accessType: 'read', recordType: 'Steps' },
         { accessType: 'read', recordType: 'TotalCaloriesBurned' },
-        { accessType: 'read', recordType: 'ActiveCaloriesBurned' },
       ]);
 
       const hasPermissions = permissions.length > 0;
@@ -363,88 +437,42 @@ const useAndroidHealthConnect = () => {
     }
   }, [getHealthConnect]);
 
-  const fetchSteps = useCallback(async (): Promise<{ today: number; weeklyData: number[] }> => {
+  const fetchTodayData = useCallback(async () => {
     try {
       const HealthConnect = await getHealthConnect();
       if (!HealthConnect) {
-        return { today: 0, weeklyData: [0, 0, 0, 0, 0, 0, 0] };
+        return { steps: 0, calories: 0 };
       }
 
-      const weeklyData: number[] = [];
+      const startOfDay = getStartOfToday().toISOString();
+      const endOfDay = getEndOfToday().toISOString();
 
-      // Fetch steps for each day of the past week
-      for (let i = 6; i >= 0; i--) {
-        const date = getDaysAgo(i);
-        const startTime = getStartOfDay(date).toISOString();
-        const endTime = getEndOfDay(date).toISOString();
+      // Aggregate TODAY's steps
+      const stepsResult = await HealthConnect.aggregateRecord({
+        recordType: 'Steps',
+        timeRangeFilter: {
+          operator: 'between',
+          startTime: startOfDay,
+          endTime: endOfDay,
+        },
+      });
+      const todaySteps = stepsResult.COUNT_TOTAL || 0;
 
-        try {
-          const result = await HealthConnect.readRecords('Steps', {
-            timeRangeFilter: {
-              operator: 'between',
-              startTime,
-              endTime,
-            },
-          });
+      // Aggregate TODAY's calories
+      const caloriesResult = await HealthConnect.aggregateRecord({
+        recordType: 'TotalCaloriesBurned',
+        timeRangeFilter: {
+          operator: 'between',
+          startTime: startOfDay,
+          endTime: endOfDay,
+        },
+      });
+      const todayCalories = Math.round(caloriesResult.ENERGY_TOTAL?.inKilocalories || 0);
 
-          const daySteps = result.records.reduce(
-            (sum: number, record: { count: number }) => sum + (record.count || 0),
-            0
-          );
-          weeklyData.push(Math.round(daySteps));
-        } catch (err) {
-          console.log(`Error fetching steps for day ${i}:`, err);
-          weeklyData.push(0);
-        }
-      }
-
-      return { today: weeklyData[6], weeklyData };
+      return { steps: todaySteps, calories: todayCalories };
     } catch (error) {
-      console.error('Error fetching steps:', error);
-      return { today: 0, weeklyData: [0, 0, 0, 0, 0, 0, 0] };
-    }
-  }, [getHealthConnect]);
-
-  const fetchCalories = useCallback(async (): Promise<{ today: number; weeklyData: number[] }> => {
-    try {
-      const HealthConnect = await getHealthConnect();
-      if (!HealthConnect) {
-        return { today: 0, weeklyData: [0, 0, 0, 0, 0, 0, 0] };
-      }
-
-      const weeklyData: number[] = [];
-
-      // Fetch calories for each day of the past week
-      for (let i = 6; i >= 0; i--) {
-        const date = getDaysAgo(i);
-        const startTime = getStartOfDay(date).toISOString();
-        const endTime = getEndOfDay(date).toISOString();
-
-        try {
-          const result = await HealthConnect.readRecords('TotalCaloriesBurned', {
-            timeRangeFilter: {
-              operator: 'between',
-              startTime,
-              endTime,
-            },
-          });
-
-          const dayCalories = result.records.reduce(
-            (sum: number, record: { energy: { inKilocalories: number } }) => 
-              sum + (record.energy?.inKilocalories || 0),
-            0
-          );
-          weeklyData.push(Math.round(dayCalories));
-        } catch (err) {
-          console.log(`Error fetching calories for day ${i}:`, err);
-          weeklyData.push(0);
-        }
-      }
-
-      return { today: weeklyData[6], weeklyData };
-    } catch (error) {
-      console.error('Error fetching calories:', error);
-      return { today: 0, weeklyData: [0, 0, 0, 0, 0, 0, 0] };
+      console.error('Error fetching today data:', error);
+      return { steps: 0, calories: 0 };
     }
   }, [getHealthConnect]);
 
@@ -456,21 +484,32 @@ const useAndroidHealthConnect = () => {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      const [stepsResult, caloriesResult] = await Promise.all([
-        fetchSteps(),
-        fetchCalories(),
-      ]);
+      const { steps: todaySteps, calories: todayCalories } = await fetchTodayData();
+
+      // Save to local storage
+      const today = getTodayDateString();
+      await saveHealthRecord({
+        date: today,
+        steps: todaySteps,
+        calories: todayCalories,
+      });
+
+      // Load full history
+      const history = await loadStoredHistory();
+      const weeklyData = buildWeeklyData(history);
 
       setState((prev) => ({
         ...prev,
         isLoading: false,
         data: {
           steps: {
-            ...stepsResult,
+            today: todaySteps,
+            weeklyData: weeklyData.steps,
             lastUpdated: new Date(),
           },
           calories: {
-            ...caloriesResult,
+            today: todayCalories,
+            weeklyData: weeklyData.calories,
             lastUpdated: new Date(),
           },
         },
@@ -483,14 +522,12 @@ const useAndroidHealthConnect = () => {
         error: 'Failed to fetch health data',
       }));
     }
-  }, [state.isAuthorized, fetchSteps, fetchCalories]);
+  }, [state.isAuthorized, fetchTodayData]);
 
-  // Initialize on mount
   useEffect(() => {
     initializeHealthConnect();
   }, [initializeHealthConnect]);
 
-  // Fetch data when authorized
   useEffect(() => {
     if (state.isAuthorized) {
       refreshData();
@@ -505,7 +542,7 @@ const useAndroidHealthConnect = () => {
 };
 
 /**
- * Web/fallback implementation (returns mock data)
+ * Web/fallback implementation
  */
 const useWebFallback = () => {
   const [state] = useState<HealthDataState>({
@@ -525,23 +562,18 @@ const useWebFallback = () => {
 
 /**
  * Cross-platform health data hook
- * Automatically uses HealthKit on iOS and Health Connect on Android
  */
 export function useHealthData() {
-  // Determine which hook to use based on platform
-  // Note: All hooks must be called unconditionally due to React's rules of hooks
   const iosHealth = useIOSHealthKit();
   const androidHealth = useAndroidHealthConnect();
   const webFallback = useWebFallback();
 
-  // Return the appropriate platform's data
   if (Platform.OS === 'ios') {
     return iosHealth;
   } else if (Platform.OS === 'android') {
     return androidHealth;
   }
 
-  // Fallback for web or other platforms
   return webFallback;
 }
 

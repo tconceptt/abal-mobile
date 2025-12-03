@@ -144,20 +144,15 @@ function ClassCard({ classInfo }: { classInfo: ClassInfo }) {
         </ThemedText>
       </View>
 
-      {/* Book button or Full indicator */}
+      {/* Spots indicator */}
       {isFull ? (
         <View style={styles.fullBadge}>
           <ThemedText style={styles.fullBadgeText}>Full</ThemedText>
         </View>
       ) : (
-        <Pressable
-          style={({ pressed }) => [
-            styles.bookButton,
-            pressed && styles.bookButtonPressed,
-          ]}
-        >
-          <ThemedText style={styles.bookButtonText}>Book</ThemedText>
-        </Pressable>
+        <View style={styles.spotsBadge}>
+          <ThemedText style={styles.spotsText}>{classInfo.spotsLeft} spots</ThemedText>
+        </View>
       )}
     </View>
   );
@@ -534,22 +529,18 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: AbalColors.textSecondary,
   },
-  bookButton: {
-    backgroundColor: AbalColors.primary,
-    paddingHorizontal: Spacing.md + 4,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.md,
+  spotsBadge: {
+    backgroundColor: `${AbalColors.primary}20`,
+    paddingHorizontal: Spacing.sm + 2,
+    paddingVertical: Spacing.xs + 2,
+    borderRadius: BorderRadius.sm,
     marginLeft: Spacing.sm,
   },
-  bookButtonPressed: {
-    opacity: 0.9,
-    transform: [{ scale: 0.98 }],
-  },
-  bookButtonText: {
-    fontSize: 14,
-    lineHeight: 20,
+  spotsText: {
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '600',
-    color: AbalColors.textPrimary,
+    color: AbalColors.textSecondary,
   },
   fullBadge: {
     backgroundColor: AbalColors.textMuted,

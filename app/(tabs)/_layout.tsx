@@ -25,6 +25,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="workouts"
+        options={{
+          title: 'Workouts',
+          tabBarIcon: ({ color }) => <IconSymbol size={24} name="figure.run" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="feed"
         options={{
           title: 'Feed',
@@ -38,11 +45,11 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={24} name="chart.bar.fill" color={color} />,
         }}
       />
+      {/* Hide profile from tabs - accessible via header avatar */}
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="person.fill" color={color} />,
+          href: null, // Hide from tab bar
         }}
       />
     </Tabs>

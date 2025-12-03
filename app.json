@@ -59,7 +59,7 @@
       [
         "@kingstinct/react-native-healthkit",
         {
-          "NSHealthShareUsageDescription": "ABAL needs access to your health data to track your fitness progress, including steps, calories burned, and other metrics.",
+          "NSHealthShareUsageDescription": "ABAL needs access to your health data to track your fitness progress, including steps, calories burned, workouts, and other metrics.",
           "NSHealthUpdateUsageDescription": "ABAL needs permission to save your workout data to the Health app."
         }
       ],
