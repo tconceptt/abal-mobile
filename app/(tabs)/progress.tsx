@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -10,28 +10,21 @@ import { GoalSettingModal } from '@/components/GoalSettingModal';
 import { StatCard } from '@/components/StatCard';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { WeightChart } from '@/components/WeightChart';
+import { WeightProgressCard } from '@/components/WeightProgressCard';
 import {
   mockAchievements,
   mockStatsSummary,
   mockWorkoutHistory,
 } from '@/constants/mock-data';
 import { AbalColors, BorderRadius, Shadows, Spacing } from '@/constants/theme';
-import { useUser, WeightEntry } from '@/context/UserContext';
+import { useUser } from '@/context/UserContext';
 
 type TabType = 'overview' | 'achievements' | 'history';
-type TimeRange = 'week' | 'month' | 'year';
 
 const TABS: { key: TabType; label: string }[] = [
   { key: 'overview', label: 'Overview' },
   { key: 'achievements', label: 'Achievements' },
   { key: 'history', label: 'History' },
-];
-
-const TIME_RANGES: { key: TimeRange; label: string }[] = [
-  { key: 'week', label: 'Week' },
-  { key: 'month', label: 'Month' },
-  { key: 'year', label: 'Year' },
 ];
 
 function getWorkoutTypeColor(type: string): string {
@@ -49,96 +42,9 @@ function getWorkoutTypeColor(type: string): string {
   }
 }
 
-// Helper functions for data aggregation
-function getWeekNumber(date: Date): number {
-  const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
-  const dayOfMonth = date.getDate();
-  const firstDayWeekday = firstDayOfMonth.getDay();
-  return Math.ceil((dayOfMonth + firstDayWeekday) / 7);
-}
-
-function aggregateByWeek(entries: WeightEntry[]): { value: number; label: string }[] {
-  // Get entries from the last 30 days and group by week
-  const now = new Date();
-  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-  const recentEntries = entries.filter(e => new Date(e.date) >= thirtyDaysAgo);
-
-  // Group by week number
-  const weekGroups: { [key: string]: number[] } = {};
-
-  recentEntries.forEach(entry => {
-    const date = new Date(entry.date);
-    const weekNum = getWeekNumber(date);
-    const key = `Week ${weekNum}`;
-
-    if (!weekGroups[key]) {
-      weekGroups[key] = [];
-    }
-    weekGroups[key].push(entry.weight);
-  });
-
-  // Calculate averages and sort by week number
-  return Object.entries(weekGroups)
-    .sort((a, b) => {
-      const weekA = parseInt(a[0].replace('Week ', ''));
-      const weekB = parseInt(b[0].replace('Week ', ''));
-      return weekA - weekB;
-    })
-    .map(([label, weights]) => ({
-      label,
-      value: weights.reduce((a, b) => a + b, 0) / weights.length,
-    }));
-}
-
-function aggregateByMonth(entries: WeightEntry[]): { value: number; label: string }[] {
-  // Get entries from the last year and group by month
-  const now = new Date();
-  const oneYearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
-
-  const recentEntries = entries.filter(e => new Date(e.date) >= oneYearAgo);
-
-  // Group by month
-  const monthGroups: { [key: string]: { weights: number[]; date: Date } } = {};
-
-  recentEntries.forEach(entry => {
-    const date = new Date(entry.date);
-    const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
-    const monthLabel = date.toLocaleDateString('en-US', { month: 'short' });
-
-    if (!monthGroups[monthKey]) {
-      monthGroups[monthKey] = { weights: [], date };
-    }
-    monthGroups[monthKey].weights.push(entry.weight);
-  });
-
-  // Calculate averages and sort by date
-  return Object.entries(monthGroups)
-    .sort((a, b) => a[1].date.getTime() - b[1].date.getTime())
-    .map(([_, data]) => ({
-      label: data.date.toLocaleDateString('en-US', { month: 'short' }),
-      value: data.weights.reduce((a, b) => a + b, 0) / data.weights.length,
-    }));
-}
-
-function getWeekData(entries: WeightEntry[]): { value: number; label: string }[] {
-  // Get entries from the last 7 days
-  const now = new Date();
-  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-  return entries
-    .filter(e => new Date(e.date) >= sevenDaysAgo)
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .map(entry => ({
-      value: entry.weight,
-      label: new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    }));
-}
-
 export default function ProgressScreen() {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
-  const [timeRange, setTimeRange] = useState<TimeRange>('week');
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [goalModalVisible, setGoalModalVisible] = useState(false);
   const [celebrationVisible, setCelebrationVisible] = useState(false);
@@ -171,30 +77,6 @@ export default function ProgressScreen() {
 
   const isGoalAchieved = checkGoalAchieved(latestWeight, goalWeight, startWeight);
 
-  // Prepare Chart Data based on time range
-  const chartData = useMemo(() => {
-    if (weightHistory.length === 0) return [];
-
-    // Sort by date ascending first
-    const sortedHistory = [...weightHistory].sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
-
-    switch (timeRange) {
-      case 'week':
-        return getWeekData(sortedHistory);
-      case 'month':
-        return aggregateByWeek(sortedHistory);
-      case 'year':
-        return aggregateByMonth(sortedHistory);
-      default:
-        return sortedHistory.map(entry => ({
-          value: entry.weight,
-          label: new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        }));
-    }
-  }, [weightHistory, timeRange]);
-
   // Calculate Progress
   const calculateProgress = () => {
     if (!startWeight || !latestWeight || !goalWeight) return 0;
@@ -215,120 +97,65 @@ export default function ProgressScreen() {
 
   const renderOverview = () => (
     <>
-      {/* Weight Progress Section */}
-      <View style={styles.weightSection}>
-        <View style={styles.sectionHeader}>
-          <ThemedText style={styles.sectionTitle}>Weight Progress</ThemedText>
-          <Pressable
-            style={styles.addButton}
-            onPress={() => setAddModalVisible(true)}
-          >
-            <IconSymbol name="plus" size={16} color="#FFFFFF" />
-            <ThemedText style={styles.addButtonText}>Add Entry</ThemedText>
-          </Pressable>
-        </View>
+      {/* Weight Progress Card */}
+      <WeightProgressCard
+        weightHistory={weightHistory}
+        onAddEntry={() => setAddModalVisible(true)}
+        onViewAll={() => router.push('/progress-history')}
+      />
 
-        {/* Time Range Selector */}
-        <View style={styles.timeRangeContainer}>
-          {TIME_RANGES.map((range) => (
-            <Pressable
-              key={range.key}
-              style={[
-                styles.timeRangeButton,
-                timeRange === range.key && styles.timeRangeButtonActive,
-              ]}
-              onPress={() => setTimeRange(range.key)}
-            >
-              <ThemedText
-                style={[
-                  styles.timeRangeText,
-                  timeRange === range.key && styles.timeRangeTextActive,
-                ]}
-              >
-                {range.label}
-              </ThemedText>
-            </Pressable>
-          ))}
-        </View>
-
-        {chartData.length > 1 ? (
-          <View style={styles.chartContainer}>
-            <WeightChart data={chartData} color={AbalColors.primary} height={180} />
+      {/* Goal Tracker */}
+      {goalWeight && latestWeight && startWeight ? (
+        <View style={[styles.goalCard, isGoalAchieved && styles.goalCardAchieved]}>
+          {isGoalAchieved && (
+            <View style={styles.achievedBanner}>
+              <IconSymbol name="trophy.fill" size={16} color="#FFD700" />
+              <ThemedText style={styles.achievedText}>Goal Achieved!</ThemedText>
+            </View>
+          )}
+          <View style={styles.goalHeader}>
+            <View>
+              <ThemedText style={styles.goalLabel}>Goal Progress</ThemedText>
+              <ThemedText style={styles.goalValue}>{Math.min(progressPercentage, 100).toFixed(0)}%</ThemedText>
+            </View>
+            <View style={styles.goalTarget}>
+              <ThemedText style={styles.targetLabel}>Target</ThemedText>
+              <ThemedText style={styles.targetValue}>{goalWeight} lbs</ThemedText>
+            </View>
           </View>
-        ) : (
-          <View style={styles.emptyState}>
-            <ThemedText style={styles.emptyStateText}>
-              {weightHistory.length === 0
-                ? 'No weight data yet. Add your first entry!'
-                : 'Not enough data for this time range. Add more entries!'}
+
+          <View style={styles.progressBarBg}>
+            <View style={[
+              styles.progressBarFill,
+              { width: `${Math.min(progressPercentage, 100)}%` },
+              isGoalAchieved && styles.progressBarAchieved
+            ]} />
+          </View>
+
+          <View style={styles.goalFooter}>
+            <ThemedText style={styles.goalFooterText}>
+              {isGoalAchieved ? 'You made it!' : `${remaining} lbs to go`}
+            </ThemedText>
+            <ThemedText style={styles.goalFooterText}>
+              Start: {startWeight} lbs
             </ThemedText>
           </View>
-        )}
-
-        {/* View Details Button */}
-        {weightHistory.length > 0 && (
-          <Pressable
-            style={styles.viewDetailsButton}
-            onPress={() => router.push('/progress-history')}
-          >
-            <ThemedText style={styles.viewDetailsText}>View All Entries</ThemedText>
-            <IconSymbol name="chevron.right" size={16} color={AbalColors.primary} />
-          </Pressable>
-        )}
-
-        {/* Goal Tracker */}
-        {goalWeight && latestWeight && startWeight ? (
-          <View style={[styles.goalCard, isGoalAchieved && styles.goalCardAchieved]}>
-            {isGoalAchieved && (
-              <View style={styles.achievedBanner}>
-                <IconSymbol name="trophy.fill" size={16} color="#FFD700" />
-                <ThemedText style={styles.achievedText}>Goal Achieved!</ThemedText>
-              </View>
-            )}
-            <View style={styles.goalHeader}>
-              <View>
-                <ThemedText style={styles.goalLabel}>Goal Progress</ThemedText>
-                <ThemedText style={styles.goalValue}>{Math.min(progressPercentage, 100).toFixed(0)}%</ThemedText>
-              </View>
-              <View style={styles.goalTarget}>
-                <ThemedText style={styles.targetLabel}>Target</ThemedText>
-                <ThemedText style={styles.targetValue}>{goalWeight} lbs</ThemedText>
-              </View>
-            </View>
-
-            <View style={styles.progressBarBg}>
-              <View style={[
-                styles.progressBarFill,
-                { width: `${Math.min(progressPercentage, 100)}%` },
-                isGoalAchieved && styles.progressBarAchieved
-              ]} />
-            </View>
-
-            <View style={styles.goalFooter}>
-              <ThemedText style={styles.goalFooterText}>
-                {isGoalAchieved ? 'You made it!' : `${remaining} lbs to go`}
-              </ThemedText>
-              <ThemedText style={styles.goalFooterText}>
-                Start: {startWeight} lbs
-              </ThemedText>
-            </View>
+        </View>
+      ) : (
+        !goalWeight && (
+          <View style={styles.noGoalCard}>
+            <IconSymbol name="target" size={32} color={AbalColors.textMuted} />
+            <ThemedText style={styles.noGoalTitle}>No Goal Set</ThemedText>
+            <ThemedText style={styles.noGoalText}>Set a target weight to track your progress</ThemedText>
+            <Pressable
+              style={styles.setGoalButton}
+              onPress={() => setGoalModalVisible(true)}
+            >
+              <ThemedText style={styles.setGoalButtonText}>Set Goal Weight</ThemedText>
+            </Pressable>
           </View>
-        ) : (
-          !goalWeight && (
-            <View style={styles.noGoalCard}>
-              <IconSymbol name="target" size={32} color={AbalColors.textMuted} />
-              <ThemedText style={styles.noGoalTitle}>No Goal Set</ThemedText>
-              <ThemedText style={styles.noGoalText}>Set a target weight to track your progress</ThemedText>
-              <Pressable
-                style={styles.setGoalButton}
-                onPress={() => setGoalModalVisible(true)}
-              >
-                <ThemedText style={styles.setGoalButtonText}>Set Goal Weight</ThemedText>
-              </Pressable>
-            </View>
-          )
-        )}
-      </View>
+        )
+      )}
 
       {/* Stats Grid */}
       <View style={styles.statsGrid}>
@@ -542,105 +369,22 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: Spacing.md,
-  },
-  weightSection: {
-    marginBottom: Spacing.lg,
+    gap: Spacing.md,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: Spacing.sm,
-    marginBottom: Spacing.md,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: AbalColors.textPrimary,
   },
-  addButton: {
-    backgroundColor: AbalColors.primary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 6,
-    borderRadius: BorderRadius.full,
-    gap: 4,
-  },
-  addButtonText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  timeRangeContainer: {
-    flexDirection: 'row',
-    backgroundColor: AbalColors.background,
-    borderRadius: BorderRadius.md,
-    padding: 4,
-    marginBottom: Spacing.md,
-  },
-  timeRangeButton: {
-    flex: 1,
-    paddingVertical: Spacing.sm,
-    alignItems: 'center',
-    borderRadius: BorderRadius.sm,
-  },
-  timeRangeButtonActive: {
-    backgroundColor: AbalColors.cardBackground,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  timeRangeText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: AbalColors.textSecondary,
-  },
-  timeRangeTextActive: {
-    color: AbalColors.textPrimary,
-    fontWeight: '600',
-  },
-  chartContainer: {
-    backgroundColor: AbalColors.cardBackground,
-    borderRadius: BorderRadius.md,
-    padding: Spacing.md,
-    paddingRight: Spacing.sm,
-    marginBottom: Spacing.sm,
-    ...Shadows.card,
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  viewDetailsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Spacing.sm,
-    marginBottom: Spacing.md,
-    gap: 4,
-  },
-  viewDetailsText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: AbalColors.primary,
-  },
-  emptyState: {
-    backgroundColor: AbalColors.cardBackground,
-    borderRadius: BorderRadius.md,
-    padding: Spacing.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.md,
-    ...Shadows.card,
-  },
-  emptyStateText: {
-    color: AbalColors.textSecondary,
-    textAlign: 'center',
-  },
   goalCard: {
     backgroundColor: AbalColors.cardBackground,
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.lg,
     padding: Spacing.md,
     ...Shadows.card,
   },
@@ -665,7 +409,7 @@ const styles = StyleSheet.create({
   },
   noGoalCard: {
     backgroundColor: AbalColors.cardBackground,
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.lg,
     padding: Spacing.xl,
     alignItems: 'center',
     ...Shadows.card,
@@ -750,7 +494,6 @@ const styles = StyleSheet.create({
   statsGrid: {
     flexDirection: 'row',
     gap: Spacing.sm,
-    marginBottom: Spacing.sm,
   },
   viewAllLink: {
     fontSize: 14,

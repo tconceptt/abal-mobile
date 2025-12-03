@@ -1,38 +1,44 @@
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { BarChart } from 'react-native-gifted-charts';
 
 import { ThemedText } from '@/components/themed-text';
-import { AbalColors, BorderRadius, Shadows, Spacing } from '@/constants/theme';
 import { dummyFunctions, ProgressMetric } from '@/constants/mock-data';
+import { AbalColors, BorderRadius, Shadows, Spacing } from '@/constants/theme';
 
 interface ProgressCardProps {
   metric: ProgressMetric;
   onPress?: (metricId: string) => void;
 }
 
-// Simple mini bar chart component using Views
+// Mini bar chart component using gifted-charts
 function MiniChart({ data, color }: { data: number[]; color: string }) {
   if (!data || data.length < 2) return null;
 
-  // Normalize data to fit within the chart
-  const max = Math.max(...data);
-  const normalizedData = data.map((value) => (value / max) * 100);
+  // Convert data to gifted-charts format
+  const barData = data.map((value, index) => ({
+    value,
+    frontColor: color,
+    opacity: 0.3 + (index / data.length) * 0.7,
+  }));
 
   return (
     <View style={styles.chartContainer}>
-      {normalizedData.map((height, index) => (
-        <View
-          key={index}
-          style={[
-            styles.chartBar,
-            {
-              height: `${Math.max(height, 10)}%`,
-              backgroundColor: color,
-              opacity: 0.3 + (index / normalizedData.length) * 0.7,
-            },
-          ]}
-        />
-      ))}
+      <BarChart
+        data={barData}
+        width={100}
+        height={40}
+        barWidth={8}
+        spacing={4}
+        barBorderRadius={2}
+        noOfSections={3}
+        hideRules
+        hideYAxisText
+        hideAxesAndRules
+        isAnimated
+        animationDuration={500}
+        disablePress
+      />
     </View>
   );
 }
@@ -78,14 +84,8 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   chartContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
     height: 40,
-    gap: 4,
-  },
-  chartBar: {
-    flex: 1,
-    borderRadius: 2,
-    minHeight: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

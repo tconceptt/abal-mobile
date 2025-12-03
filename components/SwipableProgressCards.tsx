@@ -1,23 +1,26 @@
 import React, { useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Animated,
-  Dimensions,
-  FlatList,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  Pressable,
-  StyleSheet,
-  View,
+    ActivityIndicator,
+    Animated,
+    Dimensions,
+    FlatList,
+    NativeScrollEvent,
+    NativeSyntheticEvent,
+    Pressable,
+    StyleSheet,
+    View,
 } from 'react-native';
+import { BarChart } from 'react-native-gifted-charts';
 
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol, IconSymbolName } from '@/components/ui/icon-symbol';
 import { AbalColors, BorderRadius, Shadows, Spacing } from '@/constants/theme';
+import { useUser } from '@/context/UserContext';
 import { useHealthData } from '@/hooks/useHealthData';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - Spacing.md * 2;
+const CHART_WIDTH = CARD_WIDTH - Spacing.md * 3;
 
 export interface ProgressMetricData {
   id: string;
@@ -35,21 +38,8 @@ export interface ProgressMetricData {
   error?: string | null;
 }
 
-// Static metrics that don't come from health data
+// Static metrics that don't come from health data or user context
 const staticProgressMetrics: ProgressMetricData[] = [
-  {
-    id: 'weight',
-    title: 'Weight',
-    value: 72.5,
-    unit: 'kg',
-    target: 70,
-    trend: 'down',
-    trendValue: '-0.5 kg this week',
-    icon: 'scalemass.fill',
-    color: '#6366F1',
-    chartData: [75, 74.5, 74, 73.5, 73, 72.8, 72.5],
-    subtitle: 'Last updated today',
-  },
   {
     id: 'water',
     title: 'Water Intake',
@@ -102,29 +92,78 @@ function calculateTrend(data: number[]): { trend: 'up' | 'down' | 'stable'; tren
   }
 }
 
+// Helper to calculate weight trend
+function calculateWeightTrend(
+  weightHistory: { date: string; weight: number }[]
+): { trend: 'up' | 'down' | 'stable'; trendValue: string; chartData: number[] } {
+  if (weightHistory.length === 0) {
+    return { trend: 'stable', trendValue: 'No data yet', chartData: [] };
+  }
+
+  // Get last 7 entries for chart
+  const recentEntries = weightHistory.slice(-7);
+  const chartData = recentEntries.map(e => e.weight);
+
+  if (weightHistory.length < 2) {
+    return { trend: 'stable', trendValue: 'Getting started', chartData };
+  }
+
+  // Compare latest weight with week-ago weight (or oldest if less than a week of data)
+  const latestWeight = weightHistory[weightHistory.length - 1].weight;
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  
+  const weekAgoEntry = weightHistory.find(e => new Date(e.date) <= weekAgo) || weightHistory[0];
+  const weekAgoWeight = weekAgoEntry.weight;
+
+  const diff = latestWeight - weekAgoWeight;
+  const diffAbs = Math.abs(diff).toFixed(1);
+
+  if (diff > 0.5) {
+    return { trend: 'up', trendValue: `+${diffAbs} lbs this week`, chartData };
+  } else if (diff < -0.5) {
+    return { trend: 'down', trendValue: `-${diffAbs} lbs this week`, chartData };
+  } else {
+    return { trend: 'stable', trendValue: 'Stable this week', chartData };
+  }
+}
+
 function MiniChart({ data, color }: { data: number[]; color: string }) {
-  const max = Math.max(...data);
-  const min = Math.min(...data);
-  const range = max - min || 1;
+  if (!data || data.length === 0) {
+    return (
+      <View style={styles.chartContainer}>
+        <ThemedText style={styles.noChartText}>No data yet</ThemedText>
+      </View>
+    );
+  }
+
+  // Convert data to gifted-charts format
+  const barData = data.map((value, index) => ({
+    value,
+    frontColor: index === data.length - 1 ? color : `${color}50`,
+    topLabelComponent: undefined,
+  }));
+
+  // Calculate bar width based on data length
+  const barWidth = Math.min(Math.floor((CHART_WIDTH - (data.length * 6)) / data.length), 32);
 
   return (
     <View style={styles.chartContainer}>
-      {data.map((value, index) => {
-        const height = ((value - min) / range) * 100;
-        const isLast = index === data.length - 1;
-        return (
-          <View
-            key={index}
-            style={[
-              styles.chartBar,
-              {
-                height: `${Math.max(height, 15)}%`,
-                backgroundColor: isLast ? color : `${color}40`,
-              },
-            ]}
-          />
-        );
-      })}
+      <BarChart
+        data={barData}
+        width={CHART_WIDTH}
+        height={50}
+        barWidth={barWidth}
+        spacing={6}
+        barBorderRadius={4}
+        noOfSections={3}
+        hideRules
+        hideYAxisText
+        hideAxesAndRules
+        isAnimated
+        animationDuration={500}
+        disablePress
+      />
     </View>
   );
 }
@@ -144,7 +183,7 @@ function ProgressCard({ metric, onPress }: { metric: ProgressMetricData; onPress
   const getTrendColor = () => {
     if (metric.id === 'weight') {
       // For weight, down is good
-      return metric.trend === 'down' ? AbalColors.success : AbalColors.error;
+      return metric.trend === 'down' ? AbalColors.success : metric.trend === 'up' ? AbalColors.error : AbalColors.textSecondary;
     }
     return metric.trend === 'up'
       ? AbalColors.success
@@ -231,11 +270,11 @@ function ProgressCard({ metric, onPress }: { metric: ProgressMetricData; onPress
       <View style={styles.valueSection}>
         <View style={styles.mainValue}>
           <ThemedText style={[styles.value, { color: metric.color }]}>
-            {metric.value.toLocaleString()}
+            {metric.value > 0 ? metric.value.toLocaleString() : '--'}
           </ThemedText>
           <ThemedText style={styles.unit}>{metric.unit}</ThemedText>
         </View>
-        {metric.target && (
+        {metric.target && metric.value > 0 && (
           <View style={styles.targetContainer}>
             <View
               style={[styles.progressBar, { backgroundColor: `${metric.color}20` }]}
@@ -253,6 +292,13 @@ function ProgressCard({ metric, onPress }: { metric: ProgressMetricData; onPress
             <ThemedText style={styles.targetText}>
               {Math.round((metric.value / metric.target) * 100)}% of {metric.target.toLocaleString()}{' '}
               {metric.unit}
+            </ThemedText>
+          </View>
+        )}
+        {metric.target && metric.value === 0 && (
+          <View style={styles.targetContainer}>
+            <ThemedText style={styles.targetText}>
+              Goal: {metric.target.toLocaleString()} {metric.unit}
             </ThemedText>
           </View>
         )}
@@ -284,11 +330,15 @@ export function SwipableProgressCards({ onViewAll }: SwipableProgressCardsProps)
   
   // Get health data from the hook
   const { data: healthData, isLoading, error, isAuthorized, requestPermission } = useHealthData();
+  
+  // Get user weight data from context
+  const { weightHistory, goalWeight, latestWeight } = useUser();
 
   // Build the progress metrics array with real health data
   const progressMetrics = useMemo((): ProgressMetricData[] => {
     const stepsTrend = calculateTrend(healthData.steps.weeklyData);
     const caloriesTrend = calculateTrend(healthData.calories.weeklyData);
+    const weightTrendData = calculateWeightTrend(weightHistory);
 
     const stepsMetric: ProgressMetricData = {
       id: 'steps',
@@ -326,9 +376,26 @@ export function SwipableProgressCards({ onViewAll }: SwipableProgressCardsProps)
       error: !isAuthorized && !isLoading ? error : null,
     };
 
+    // Build weight metric from user context data
+    const weightMetric: ProgressMetricData = {
+      id: 'weight',
+      title: 'Weight Progress',
+      value: latestWeight || 0,
+      unit: 'lbs',
+      target: goalWeight || undefined,
+      trend: weightTrendData.trend,
+      trendValue: weightTrendData.trendValue,
+      icon: 'scalemass.fill',
+      color: '#6366F1',
+      chartData: weightTrendData.chartData,
+      subtitle: latestWeight 
+        ? `Current weight` 
+        : 'Log your weight to track',
+    };
+
     // Order: Steps, Calories, Weight, Water, Sleep
-    return [stepsMetric, caloriesMetric, ...staticProgressMetrics];
-  }, [healthData, isLoading, error, isAuthorized]);
+    return [stepsMetric, caloriesMetric, weightMetric, ...staticProgressMetrics];
+  }, [healthData, isLoading, error, isAuthorized, weightHistory, goalWeight, latestWeight]);
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const scrollPosition = event.nativeEvent.contentOffset.x;
@@ -531,16 +598,15 @@ const styles = StyleSheet.create({
     color: AbalColors.textSecondary,
   },
   chartContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    height: 50,
-    gap: 4,
+    height: 60,
     marginBottom: Spacing.md,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  chartBar: {
-    flex: 1,
-    borderRadius: 3,
-    minHeight: 8,
+  noChartText: {
+    fontSize: 13,
+    color: AbalColors.textMuted,
+    textAlign: 'center',
   },
   trendContainer: {
     flexDirection: 'row',

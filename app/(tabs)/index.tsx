@@ -9,8 +9,8 @@ import { MembershipCard } from '@/components/MembershipCard';
 import { SwipableProgressCards } from '@/components/SwipableProgressCards';
 import { ThemedText } from '@/components/themed-text';
 import { WorkoutCard } from '@/components/WorkoutCard';
-import { AbalColors, Spacing } from '@/constants/theme';
 import { mockMembership, mockUser } from '@/constants/mock-data';
+import { AbalColors, Spacing } from '@/constants/theme';
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -28,13 +28,7 @@ export default function HomeScreen() {
   };
 
   const handleStartWorkout = () => {
-    console.log('Workout started!');
-    // TODO: Implement workout tracking
-  };
-
-  const handleStopWorkout = () => {
-    console.log('Workout ended!');
-    // TODO: Save workout data
+    router.push('/start-workout');
   };
 
   return (
@@ -60,10 +54,7 @@ export default function HomeScreen() {
           <View style={styles.sectionHeader}>
             <ThemedText style={styles.sectionTitle}>Today's Workout</ThemedText>
           </View>
-          <WorkoutCard
-            onStartWorkout={handleStartWorkout}
-            onStopWorkout={handleStopWorkout}
-          />
+          <WorkoutCard onStartWorkout={handleStartWorkout} />
         </View>
 
         {/* Class Schedule Section */}
